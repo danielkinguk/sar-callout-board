@@ -1,3 +1,11 @@
+import cors from "cors";
+
+const app = express();
+
+// Allow both HTTP + Socket.io from any origin
+app.use(cors());
+app.use(express.json());
+
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
