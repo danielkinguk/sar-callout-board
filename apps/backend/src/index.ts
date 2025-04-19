@@ -1,12 +1,12 @@
-import cors from "cors";
 import express from "express";
+import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import { v4 as uuidv4 } from "uuid";
 
+const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
-const app = express();
 
 // Allow both HTTP + Socket.io from any origin
 app.use(cors());
