@@ -4,7 +4,7 @@ function App() {
   const [greeting, setGreeting] = useState("");
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/hello`)
+    fetch(`${process.env.REACT_APP_API_URL}/hello`)
       .then((res) => res.json())
       .then((data) => setGreeting(data.message))
       .catch(console.error);
