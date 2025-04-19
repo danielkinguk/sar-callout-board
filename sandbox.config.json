@@ -1,5 +1,7 @@
 {
   "template": "node",
-  "container": { "node": "20" },
+  "container": {
+    "node": "20"
+  },
   "hiddenPorts": [2222]
 }
