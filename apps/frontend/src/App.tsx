@@ -8,7 +8,7 @@ const socket = io(process.env.REACT_APP_API_URL!);
 interface Mission {
   id: string;
   title: string;
-  status: "pending" | "active" | "completed";
+  status: string;
   latitude: number;
   longitude: number;
   createdAt: string;
@@ -16,8 +16,6 @@ interface Mission {
 
 export default function App() {
   const [missions, setMissions] = useState<Mission[]>([]);
-
-  // Form state
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<"pending" | "active" | "completed">(
     "pending"
@@ -26,13 +24,11 @@ export default function App() {
   const [longitude, setLongitude] = useState("");
 
   useEffect(() => {
-    // Load existing missions
     fetch(`${process.env.REACT_APP_API_URL}/missions`)
-      .then((res) => res.json())
+      .then((r) => r.json())
       .then(setMissions)
       .catch(console.error);
 
-    // Subscribe to new missions
     socket.on("mission:new", (m: Mission) => {
       setMissions((curr) => [...curr, m]);
     });
@@ -42,13 +38,12 @@ export default function App() {
     };
   }, []);
 
-  // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
     if (!title || isNaN(lat) || isNaN(lng)) {
-      return alert("Please fill in all fields with valid values.");
+      return alert("Please fill in all fields.");
     }
     try {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/missions`, {
@@ -57,36 +52,96 @@ export default function App() {
         body: JSON.stringify({ title, status, latitude: lat, longitude: lng }),
       });
       if (!res.ok) throw new Error(await res.text());
-      // Clear form; the socket listener will update the list
       setTitle("");
       setStatus("pending");
       setLatitude("");
       setLongitude("");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to create mission.");
+      alert(`Failed to create mission: ${err.message}`);
     }
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
+    <div style={{ display: "flex", height: "100vh" }}>
       {/* Sidebar */}
-      <div style={{ width: '30%', padding: 16, overflow: 'auto', borderRight: '1px solid #ddd' }}>
-        {/* …your New Mission form and list here… */}
+      <div
+        style={{
+          width: "30%",
+          padding: 16,
+          overflow: "auto",
+          borderRight: "1px solid #ddd",
+        }}
+      >
+        <h2>New Mission</h2>
+        <form onSubmit={handleSubmit} style={{ marginBottom: 16 }}>
+          <input
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            style={{ width: "100%", padding: 8, marginBottom: 8 }}
+          />
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as any)}
+            style={{ width: "100%", padding: 8, marginBottom: 8 }}
+          >
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+          </select>
+          <input
+            type="text"
+            placeholder="Latitude"
+            value={latitude}
+            onChange={(e) => setLatitude(e.target.value)}
+            style={{ width: "100%", padding: 8, marginBottom: 8 }}
+          />
+          <input
+            type="text"
+            placeholder="Longitude"
+            value={longitude}
+            onChange={(e) => setLongitude(e.target.value)}
+            style={{ width: "100%", padding: 8, marginBottom: 8 }}
+          />
+          <button type="submit" style={{ padding: "8px 16px" }}>
+            Add Mission
+          </button>
+        </form>
+
+        <h2>Active Missions</h2>
+        {missions.length === 0 ? (
+          <p>No missions yet.</p>
+        ) : (
+          missions.map((m) => (
+            <div
+              key={m.id}
+              style={{ marginBottom: 12, padding: 8, border: "1px solid #ccc" }}
+            >
+              <strong>{m.title}</strong>
+              <p>Status: {m.status}</p>
+              <p style={{ fontSize: 12, color: "#666" }}>
+                Created: {new Date(m.createdAt).toLocaleTimeString()}
+              </p>
+            </div>
+          ))
+        )}
       </div>
-  
+
       {/* Map */}
       <div style={{ flex: 1 }}>
         <MapContainer
           center={[47.6062, -122.3321]}
           zoom={10}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: "100%", width: "100%" }}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          {missions.map(m => (
+          {missions.map((m) => (
             <Marker key={m.id} position={[m.latitude, m.longitude]}>
               <Popup>
-                <strong>{m.title}</strong><br/>
+                <strong>{m.title}</strong>
+                <br />
                 Status: {m.status}
               </Popup>
             </Marker>
@@ -95,4 +150,4 @@ export default function App() {
       </div>
     </div>
   );
-  
+}
