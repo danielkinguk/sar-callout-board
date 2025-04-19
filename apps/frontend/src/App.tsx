@@ -63,18 +63,20 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
+    <div style={{ display: "flex", height: "100vh", margin: 0, padding: 0 }}>
       {/* Sidebar */}
       <div
         style={{
           width: "30%",
           padding: 16,
-          overflow: "auto",
+          overflowY: "auto",
           borderRight: "1px solid #ddd",
+          boxSizing: "border-box",
         }}
       >
+        {/* New Mission Form */}
         <h2>New Mission</h2>
-        <form onSubmit={handleSubmit} style={{ marginBottom: 16 }}>
+        <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
           <input
             type="text"
             placeholder="Title"
@@ -110,6 +112,7 @@ export default function App() {
           </button>
         </form>
 
+        {/* Mission List */}
         <h2>Active Missions</h2>
         {missions.length === 0 ? (
           <p>No missions yet.</p>
@@ -117,7 +120,12 @@ export default function App() {
           missions.map((m) => (
             <div
               key={m.id}
-              style={{ marginBottom: 12, padding: 8, border: "1px solid #ccc" }}
+              style={{
+                marginBottom: 12,
+                padding: 12,
+                border: "1px solid #ccc",
+                borderRadius: 4,
+              }}
             >
               <strong>{m.title}</strong>
               <p>Status: {m.status}</p>
@@ -130,11 +138,17 @@ export default function App() {
       </div>
 
       {/* Map */}
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, position: "relative" }}>
         <MapContainer
           center={[47.6062, -122.3321]}
           zoom={10}
-          style={{ height: "100%", width: "100%" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            height: "100%",
+            width: "100%",
+          }}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {missions.map((m) => (
