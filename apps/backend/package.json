@@ -1,5 +1,8 @@
 {
   "name": "backend",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts"
+  }
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,4 +12,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC"
+  
 }

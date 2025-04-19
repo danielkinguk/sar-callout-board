@@ -18,7 +18,9 @@ importers:
         specifier: ^4.1.4
         version: 4.1.4
 
-  appsfrontend:
+  apps/backend: {}
+
+  apps/frontend:
     dependencies:
       '@testing-library/dom':
         specifier: ^10.4.0
