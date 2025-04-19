@@ -38,6 +38,19 @@ app.post("/missions", (req, res) => {
   };
   missions.push(m);
 
+  // 3️⃣ Delete a mission
+  app.delete("/missions/:id", (req, res) => {
+    const { id } = req.params;
+    const idx = missions.findIndex((m) => m.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: "Mission not found" });
+    }
+    const [deleted] = missions.splice(idx, 1);
+    // Notify all clients that this mission was removed
+    io.emit("mission:delete", { id: deleted.id });
+    res.status(204).send(); // no content
+  });
+
   // Broadcast to all connected clients
   io.emit("mission:new", m);
 
