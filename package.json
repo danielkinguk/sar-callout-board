@@ -1,9 +1,16 @@
 {
   "name": "sar-callout-board",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev:frontend": "pnpm --filter frontend dev",
-    "dev:backend":  "pnpm --filter backend dev"
+    "dev:backend": "pnpm --filter backend dev"
+  },
+  "dependencies": {
+    "react-leaflet": "^5.0.0",
+    "socket.io-client": "^4.8.1",
+    "tailwindcss": "^4.1.4"
   }
 }
