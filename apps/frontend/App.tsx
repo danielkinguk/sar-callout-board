@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 
 interface Mission {
   id: string;
@@ -12,62 +9,34 @@ interface Mission {
   createdAt: string;
 }
 
-const socket = io(process.env.REACT_APP_API_URL!);
-
 function App() {
   const [missions, setMissions] = useState<Mission[]>([]);
 
-  // Fetch existing missions once
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/missions`)
+    // Full 3001 URL here so CRA on 3000 proxies correctly
+    fetch("https://<your-sandbox-id>-3001.sse.codesandbox.io/missions")
       .then((res) => res.json())
       .then(setMissions)
       .catch(console.error);
-
-    // Subscribe to new missions
-    socket.on("mission:new", (m: Mission) => {
-      setMissions((curr) => [...curr, m]);
-    });
-
-    return () => {
-      socket.off("mission:new");
-    };
   }, []);
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <div className="w-1/3 p-4 overflow-auto border-r">
-        <h2 className="text-xl font-bold mb-4">Active Missions</h2>
-        {missions.map((m) => (
-          <div key={m.id} className="mb-3 p-2 border rounded">
-            <h3 className="font-semibold">{m.title}</h3>
-            <p className="text-sm">Status: {m.status}</p>
-            <p className="text-xs text-gray-500">
-              Created: {new Date(m.createdAt).toLocaleTimeString()}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Map */}
-      <div className="flex-1">
-        <MapContainer
-          center={[47.6062, -122.3321]}
-          zoom={10}
-          style={{ height: "100%", width: "100%" }}
-        >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          {missions.map((m) => (
-            <Marker key={m.id} position={[m.latitude, m.longitude]}>
-              <Popup>
-                <strong>{m.title}</strong>
-                <br />
-                Status: {m.status}
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold">SAR Call‑Out Board</h1>
+      <div className="mt-6">
+        {missions.length === 0 ? (
+          <p>No missions yet.</p>
+        ) : (
+          missions.map((m) => (
+            <div key={m.id} className="mb-4 p-3 border rounded">
+              <h2 className="font-semibold">{m.title}</h2>
+              <p>Status: {m.status}</p>
+              <p className="text-sm text-gray-500">
+                Created: {new Date(m.createdAt).toLocaleString()}
+              </p>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
