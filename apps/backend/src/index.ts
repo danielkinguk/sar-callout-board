@@ -1,22 +1,55 @@
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import { v4 as uuidv4 } from "uuid";
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" },
+const io = new Server(server, { cors: { origin: "*" } });
+
+// ① Must be before your routes so JSON bodies are parsed
+app.use(express.json());
+
+// In-memory storage
+type Mission = {
+  id: string;
+  title: string;
+  status: "pending" | "active" | "completed";
+  latitude: number;
+  longitude: number;
+  createdAt: string;
+};
+const missions: Mission[] = [];
+
+// ② Your API routes
+app.get("/missions", (_req, res) => {
+  console.log("GET /missions");
+  res.json(missions);
 });
 
-app.get("/hello", (_req, res) => {
-  res.json({ message: "Hello, SAR!" });
+app.post("/missions", (req, res) => {
+  console.log("POST /missions", req.body);
+  const { title, status, latitude, longitude } = req.body;
+  const m: Mission = {
+    id: uuidv4(),
+    title,
+    status,
+    latitude,
+    longitude,
+    createdAt: new Date().toISOString(),
+  };
+  missions.push(m);
+  io.emit("mission:new", m);
+  res.status(201).json(m);
 });
 
-io.on("connection", (socket) => {
-  console.log(`🔌 Client connected: ${socket.id}`);
+// ③ Catch‐all logger to see unhandled routes
+app.use((req, res, next) => {
+  console.log(`❓ ${req.method} ${req.url} — no handler`);
+  res.status(404).send(`Cannot ${req.method} ${req.url}`);
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`⚡️ Backend listening at http://localhost:${PORT}`);
+  console.log(`⚡️ Backend listening on http://localhost:${PORT}`);
 });
