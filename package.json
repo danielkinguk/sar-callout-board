@@ -1,11 +1,10 @@
 {
-  "name": "sar-callout-board",
   "private": true,
   "workspaces": [
     "apps/*"
   ],
   "scripts": {
-    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:frontend": "pnpm --filter frontend start",
     "dev:backend": "pnpm --filter backend dev"
   },
   "dependencies": {
