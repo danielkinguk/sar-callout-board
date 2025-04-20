@@ -1,7 +1,18 @@
-import { useEffect, useState, FormEvent } from "react";
+import React, { useEffect, useState, FormEvent } from "react";
 import { io } from "socket.io-client";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import type { LatLngExpression } from "leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+// Fix default marker icons
+import markerIconUrl from "leaflet/dist/images/marker-icon.png";
+import markerRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIconUrl,
+  iconRetinaUrl: markerRetinaUrl,
+  shadowUrl: markerShadowUrl,
+});
 
 const API_URL = process.env.REACT_APP_API_URL!;
 const socket = io(API_URL);
@@ -15,6 +26,15 @@ interface Mission {
   createdAt: string;
 }
 
+// Utility to invalidate map size after render
+function MapInvalidate() {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => map.invalidateSize(), 0);
+  }, [map]);
+  return null;
+}
+
 export default function App() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [title, setTitle] = useState("");
@@ -25,13 +45,11 @@ export default function App() {
   const [longitude, setLongitude] = useState("");
 
   useEffect(() => {
-    // Fetch existing missions
     fetch(`${API_URL}/missions`)
       .then((r) => r.json())
       .then(setMissions)
       .catch(console.error);
 
-    // Real-time listeners
     socket.on("mission:new", (m: Mission) => {
       setMissions((curr) => [...curr, m]);
     });
@@ -72,10 +90,8 @@ export default function App() {
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`Delete "${title}"?`)) return;
     const res = await fetch(`${API_URL}/missions/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      alert("Failed to delete mission");
-    }
-    // removal happens via socket
+    if (!res.ok) alert("Failed to delete mission");
+    // removal via socket
   };
 
   return (
@@ -87,7 +103,6 @@ export default function App() {
           padding: 16,
           overflowY: "auto",
           borderRight: "1px solid #ddd",
-          boxSizing: "border-box",
         }}
       >
         <h2>New Mission</h2>
@@ -168,8 +183,8 @@ export default function App() {
       {/* Map */}
       <div style={{ flex: 1, position: "relative" }}>
         <MapContainer
-          center={[47.6062, -122.3321]}
-          zoom={10}
+          center={[54.2586, -3.2145]}
+          zoom={12}
           style={{
             position: "absolute",
             top: 0,
@@ -178,6 +193,7 @@ export default function App() {
             width: "100%",
           }}
         >
+          <MapInvalidate />
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {missions.map((m) => (
             <Marker key={m.id} position={[m.latitude, m.longitude]}>
