@@ -36,6 +36,7 @@
     "@types/jest": "^29.5.14",
     "@types/leaflet": "^1.9.17",
     "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2"
+    "@types/react-dom": "^19.1.2",
+    "typescript": "^5.8.3"
   }
 }

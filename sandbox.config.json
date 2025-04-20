@@ -3,5 +3,6 @@
   "container": {
     "node": "20"
   },
+  "hiddenPorts": [2222],
   "visiblePorts": [3000, 3001]
 }

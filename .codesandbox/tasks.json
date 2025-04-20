@@ -1,18 +1,18 @@
 {
   "$schema": "https://codesandbox.io/schemas/tasks.json",
-  "setupTasks": ["pnpm install"],
+  "setupTasks": ["npm install"],
   "tasks": {
     "dev-backend": {
       "name": "Dev: Backend",
-      "command": "pnpm dev:backend",
+      "command": "npm run dev:backend",
       "runAtStart": true,
-      "preview": { "port": 3001, "prLink": "direct" }
+      "preview": { "port": 3001 }
     },
     "dev-frontend": {
       "name": "Dev: Frontend",
-      "command": "pnpm dev:frontend",
+      "command": "npm run dev:frontend",
       "runAtStart": true,
-      "preview": { "port": 3000, "prLink": "direct" }
+      "preview": { "port": 3000 }
     }
   }
 }

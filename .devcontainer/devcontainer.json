@@ -1,0 +1,22 @@
+{
+	"name": "SAR Call‑Out Board DexBox",
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+	"features": {
+	  "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+	  "ghcr.io/devcontainers/features/git:1": {},
+	  "ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+	"customizations": {
+	  "vscode": {
+		"extensions": [
+		  "dbaeumer.vscode-eslint",
+		  "esbenp.prettier-vscode",
+		  "Prisma.prisma",
+		  "bradlc.vscode-tailwindcss"
+		]
+	  }
+	},
+	"forwardPorts": [3000, 3001],
+	"remoteUser": "vscode"
+  }
+  
