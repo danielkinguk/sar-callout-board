@@ -4,7 +4,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-// Fix default marker icons
+
+// Fix default Leaflet icon paths
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
 import markerRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
@@ -26,7 +27,9 @@ interface CallOut {
   createdAt: string;
 }
 
-// Utility to fix Leaflet container size
+type Tab = "incidents" | "resources" | "settings" | "admin";
+
+// Utility to fix map size
 function MapInvalidate() {
   const map = useMap();
   useEffect(() => {
@@ -43,22 +46,20 @@ export default function App() {
   );
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
+  const [tab, setTab] = useState<Tab>("incidents");
 
   useEffect(() => {
-    // Load existing call outs
     fetch(`${API_URL}/callouts`)
       .then((r) => r.json())
       .then(setCallOuts)
       .catch(console.error);
 
-    // Real-time listeners
-    socket.on("callout:new", (c: CallOut) => {
-      setCallOuts((curr) => [...curr, c]);
-    });
-    socket.on("callout:delete", ({ id }: { id: string }) => {
-      setCallOuts((curr) => curr.filter((c) => c.id !== id));
-    });
-
+    socket.on("callout:new", (c: CallOut) =>
+      setCallOuts((curr) => [...curr, c])
+    );
+    socket.on("callout:delete", ({ id }: { id: string }) =>
+      setCallOuts((curr) => curr.filter((c) => c.id !== id))
+    );
     return () => {
       socket.off("callout:new");
       socket.off("callout:delete");
@@ -67,11 +68,10 @@ export default function App() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const lat = parseFloat(latitude);
-    const lng = parseFloat(longitude);
-    if (!title || isNaN(lat) || isNaN(lng)) {
+    const lat = parseFloat(latitude),
+      lng = parseFloat(longitude);
+    if (!title || isNaN(lat) || isNaN(lng))
       return alert("Please fill in all fields.");
-    }
     try {
       const res = await fetch(`${API_URL}/callouts`, {
         method: "POST",
@@ -92,123 +92,236 @@ export default function App() {
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`Delete call out "${title}"?`)) return;
     const res = await fetch(`${API_URL}/callouts/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      alert("Failed to delete call out");
-    }
-    // removal via socket
+    if (!res.ok) alert("Failed to delete call out");
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", margin: 0, padding: 0 }}>
-      {/* Sidebar */}
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        margin: 0,
+        padding: 0,
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      {/* Left Sidebar: Form + List */}
       <div
         style={{
-          width: "30%",
+          width: "28%",
           padding: 16,
-          overflowY: "auto",
+          background: "#f4f6f8",
+          boxSizing: "border-box",
           borderRight: "1px solid #ddd",
+          overflowY: "auto",
         }}
       >
-        <h2>New Call Out</h2>
-        <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
-          <input
-            type="text"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            style={{ width: "100%", padding: 8, marginBottom: 8 }}
-          />
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as any)}
-            style={{ width: "100%", padding: 8, marginBottom: 8 }}
-          >
-            <option value="pending">Pending</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Latitude"
-            value={latitude}
-            onChange={(e) => setLatitude(e.target.value)}
-            style={{ width: "100%", padding: 8, marginBottom: 8 }}
-          />
-          <input
-            type="text"
-            placeholder="Longitude"
-            value={longitude}
-            onChange={(e) => setLongitude(e.target.value)}
-            style={{ width: "100%", padding: 8, marginBottom: 8 }}
-          />
-          <button type="submit" style={{ padding: "8px 16px" }}>
-            Add Call Out
-          </button>
-        </form>
-
-        <h2>Active Call Outs</h2>
-        {callOuts.length === 0 ? (
-          <p>No call outs yet.</p>
-        ) : (
-          callOuts.map((c) => (
-            <div
-              key={c.id}
-              style={{
-                marginBottom: 12,
-                padding: 12,
-                border: "1px solid #ccc",
-                borderRadius: 4,
-              }}
-            >
-              <strong>{c.title}</strong>
-              <p>Status: {c.status}</p>
-              <p style={{ fontSize: 12, color: "#666" }}>
-                Created: {new Date(c.createdAt).toLocaleTimeString()}
-              </p>
-              <button
-                onClick={() => handleDelete(c.id, c.title)}
-                style={{
-                  marginTop: 8,
-                  padding: "4px 8px",
-                  background: "#e53e3e",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Map */}
-      <div style={{ flex: 1, position: "relative" }}>
-        <MapContainer
-          center={[54.2586, -3.2145]}
-          zoom={10}
+        <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            height: "100%",
-            width: "100%",
+            background: "#fff",
+            padding: 24,
+            borderRadius: 8,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+            marginBottom: 24,
           }}
         >
-          <MapInvalidate />
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          {callOuts.map((c) => (
-            <Marker key={c.id} position={[c.latitude, c.longitude]}>
-              <Popup>
-                <strong>{c.title}</strong>
-                <br />
-                Status: {c.status}
-              </Popup>
-            </Marker>
+          <h2 style={{ marginTop: 0, marginBottom: 16, color: "#333" }}>
+            New Call Out
+          </h2>
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: "grid", gridGap: 12 }}
+          >
+            <input
+              type="text"
+              placeholder="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{
+                padding: "10px",
+                borderRadius: 4,
+                border: "1px solid #ccc",
+                width: "100%",
+              }}
+            />
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              style={{
+                padding: "10px",
+                borderRadius: 4,
+                border: "1px solid #ccc",
+                width: "100%",
+              }}
+            >
+              {["pending", "active", "completed"].map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Latitude"
+              value={latitude}
+              onChange={(e) => setLatitude(e.target.value)}
+              style={{
+                padding: "10px",
+                borderRadius: 4,
+                border: "1px solid #ccc",
+                width: "100%",
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Longitude"
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
+              style={{
+                padding: "10px",
+                borderRadius: 4,
+                border: "1px solid #ccc",
+                width: "100%",
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                padding: "12px",
+                background: "#007ACC",
+                color: "white",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+            >
+              Add Call Out
+            </button>
+          </form>
+        </div>
+        {/* Active Call Outs List Below Form */}
+        <div
+          style={{
+            background: "#fff",
+            padding: 16,
+            borderRadius: 8,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+          }}
+        >
+          <h3 style={{ marginTop: 0, marginBottom: 12 }}>Active Call Outs</h3>
+          {callOuts.length === 0 ? (
+            <p>No call outs yet.</p>
+          ) : (
+            callOuts.map((c) => (
+              <div
+                key={c.id}
+                style={{
+                  marginBottom: 8,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>{c.title}</span>
+                <button
+                  onClick={() => handleDelete(c.id, c.title)}
+                  style={{
+                    color: "#e53e3e",
+                    cursor: "pointer",
+                    border: "none",
+                    background: "none",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Right Content & Tabs */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Tabs Header */}
+        <div
+          style={{
+            display: "flex",
+            borderBottom: "1px solid #ccc",
+            background: "#f7f7f7",
+          }}
+        >
+          {[
+            { key: "incidents", label: "Incidents" },
+            { key: "resources", label: "Resources" },
+            { key: "settings", label: "Settings" },
+            { key: "admin", label: "Admin" },
+          ].map((tabItem) => (
+            <button
+              key={tabItem.key}
+              onClick={() => setTab(tabItem.key as Tab)}
+              style={{
+                flex: 1,
+                padding: "14px",
+                border: "none",
+                borderBottom:
+                  tab === tabItem.key
+                    ? "3px solid #007ACC"
+                    : "3px solid transparent",
+                background: "transparent",
+                cursor: "pointer",
+                fontWeight: tab === tabItem.key ? "bold" : "normal",
+                color: tab === tabItem.key ? "#007ACC" : "#555",
+              }}
+            >
+              {tabItem.label}
+            </button>
           ))}
-        </MapContainer>
+        </div>
+        {/* Tab Content */}
+        <div
+          style={{ flex: 1, position: "relative", border: "2px solid #ddd" }}
+        >
+          {tab === "incidents" && (
+            <>
+              <MapContainer
+                center={[54.2586, -3.2145]}
+                zoom={10}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <MapInvalidate />
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                {callOuts.map((c) => (
+                  <Marker key={c.id} position={[c.latitude, c.longitude]}>
+                    <Popup>
+                      <strong>{c.title}</strong>
+                      <br />
+                      Status: {c.status}
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </>
+          )}
+          {tab === "resources" && (
+            <div style={{ padding: 24 }}>
+              <h3>Resources</h3>
+              <p>Placeholder for resources list or controls.</p>
+            </div>
+          )}
+          {tab === "settings" && (
+            <div style={{ padding: 24 }}>
+              <h3>Settings</h3>
+              <p>Placeholder for application settings.</p>
+            </div>
+          )}
+          {tab === "admin" && (
+            <div style={{ padding: 24 }}>
+              <h3>Admin</h3>
+              <p>Placeholder for admin controls.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
