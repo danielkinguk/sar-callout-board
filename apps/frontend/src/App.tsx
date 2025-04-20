@@ -29,7 +29,7 @@ interface CallOut {
 
 type Tab = "incidents" | "resources" | "settings" | "admin";
 
-// Utility to fix map size
+// Utility to fix map size on mount
 function MapInvalidate() {
   const map = useMap();
   useEffect(() => {
@@ -47,13 +47,13 @@ export default function App() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [tab, setTab] = useState<Tab>("incidents");
+  const [formOpen, setFormOpen] = useState(true);
 
   useEffect(() => {
     fetch(`${API_URL}/callouts`)
       .then((r) => r.json())
       .then(setCallOuts)
       .catch(console.error);
-
     socket.on("callout:new", (c: CallOut) =>
       setCallOuts((curr) => [...curr, c])
     );
@@ -105,7 +105,7 @@ export default function App() {
         fontFamily: "Arial, sans-serif",
       }}
     >
-      {/* Left Sidebar: Form + List */}
+      {/* Sidebar: Collapsible Form & List */}
       <div
         style={{
           width: "28%",
@@ -116,91 +116,139 @@ export default function App() {
           overflowY: "auto",
         }}
       >
-        <div
-          style={{
-            background: "#fff",
-            padding: 24,
-            borderRadius: 8,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-            marginBottom: 24,
-          }}
-        >
-          <h2 style={{ marginTop: 0, marginBottom: 16, color: "#333" }}>
-            New Call Out
-          </h2>
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: "grid", gridGap: 12 }}
+        {/* Header with centered title and graphical toggle */}
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+          <span
+            style={{
+              flex: 1,
+              textAlign: "center",
+              fontSize: "1.25em",
+              fontWeight: "bold",
+              color: "#333",
+            }}
           >
-            <input
-              type="text"
-              placeholder="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+            New Call Out
+          </span>
+          <button
+            onClick={() => setFormOpen((open) => !open)}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              padding: 4,
+            }}
+          >
+            <div
               style={{
-                padding: "10px",
-                borderRadius: 4,
-                border: "1px solid #ccc",
-                width: "100%",
-              }}
-            />
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-              style={{
-                padding: "10px",
-                borderRadius: 4,
-                border: "1px solid #ccc",
-                width: "100%",
-              }}
-            >
-              {["pending", "active", "completed"].map((s) => (
-                <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              placeholder="Latitude"
-              value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: 4,
-                border: "1px solid #ccc",
-                width: "100%",
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Longitude"
-              value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: 4,
-                border: "1px solid #ccc",
-                width: "100%",
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: "12px",
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
                 background: "#007ACC",
-                color: "white",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              Add Call Out
-            </button>
-          </form>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="white"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{
+                  transform: formOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.2s",
+                }}
+              >
+                <path d="M7 10l5 5 5-5H7z" />
+              </svg>
+            </div>
+          </button>
         </div>
-        {/* Active Call Outs List Below Form */}
+        {formOpen && (
+          <div
+            style={{
+              background: "#fff",
+              padding: 24,
+              borderRadius: 8,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+              marginBottom: 24,
+            }}
+          >
+            <form
+              onSubmit={handleSubmit}
+              style={{ display: "grid", gridGap: 12 }}
+            >
+              <input
+                type="text"
+                placeholder="Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                style={{
+                  padding: "10px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  width: "100%",
+                }}
+              />
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                style={{
+                  padding: "10px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  width: "100%",
+                }}
+              >
+                {["pending", "active", "completed"].map((s) => (
+                  <option key={s} value={s}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Latitude"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                style={{
+                  padding: "10px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  width: "100%",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Longitude"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                style={{
+                  padding: "10px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  width: "100%",
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  padding: "12px",
+                  background: "#007ACC",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                Add Call Out
+              </button>
+            </form>
+          </div>
+        )}
+        {/* Active Call Outs List */}
         <div
           style={{
             background: "#fff",
@@ -241,7 +289,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Right Content & Tabs */}
+      {/* Main Content with Tabs & Map */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Tabs Header */}
         <div
@@ -283,25 +331,23 @@ export default function App() {
           style={{ flex: 1, position: "relative", border: "2px solid #ddd" }}
         >
           {tab === "incidents" && (
-            <>
-              <MapContainer
-                center={[54.2586, -3.2145]}
-                zoom={10}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <MapInvalidate />
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {callOuts.map((c) => (
-                  <Marker key={c.id} position={[c.latitude, c.longitude]}>
-                    <Popup>
-                      <strong>{c.title}</strong>
-                      <br />
-                      Status: {c.status}
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
-            </>
+            <MapContainer
+              center={[54.2586, -3.2145]}
+              zoom={10}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <MapInvalidate />
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              {callOuts.map((c) => (
+                <Marker key={c.id} position={[c.latitude, c.longitude]}>
+                  <Popup>
+                    <strong>{c.title}</strong>
+                    <br />
+                    Status: {c.status}
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
           )}
           {tab === "resources" && (
             <div style={{ padding: 24 }}>
