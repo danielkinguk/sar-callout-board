@@ -3,7 +3,8 @@ import { io } from "socket.io-client";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-const socket = io(process.env.REACT_APP_API_URL!);
+const API_URL = process.env.REACT_APP_API_URL!;
+const socket = io(API_URL);
 
 interface Mission {
   id: string;
@@ -24,17 +25,23 @@ export default function App() {
   const [longitude, setLongitude] = useState("");
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/missions`)
+    // Fetch existing missions
+    fetch(`${API_URL}/missions`)
       .then((r) => r.json())
       .then(setMissions)
       .catch(console.error);
 
+    // Real-time listeners
     socket.on("mission:new", (m: Mission) => {
       setMissions((curr) => [...curr, m]);
+    });
+    socket.on("mission:delete", ({ id }: { id: string }) => {
+      setMissions((curr) => curr.filter((m) => m.id !== id));
     });
 
     return () => {
       socket.off("mission:new");
+      socket.off("mission:delete");
     };
   }, []);
 
@@ -46,7 +53,7 @@ export default function App() {
       return alert("Please fill in all fields.");
     }
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/missions`, {
+      const res = await fetch(`${API_URL}/missions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, status, latitude: lat, longitude: lng }),
@@ -62,6 +69,15 @@ export default function App() {
     }
   };
 
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Delete "${title}"?`)) return;
+    const res = await fetch(`${API_URL}/missions/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert("Failed to delete mission");
+    }
+    // removal happens via socket
+  };
+
   return (
     <div style={{ display: "flex", height: "100vh", margin: 0, padding: 0 }}>
       {/* Sidebar */}
@@ -74,7 +90,6 @@ export default function App() {
           boxSizing: "border-box",
         }}
       >
-        {/* New Mission Form */}
         <h2>New Mission</h2>
         <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
           <input
@@ -112,7 +127,6 @@ export default function App() {
           </button>
         </form>
 
-        {/* Mission List */}
         <h2>Active Missions</h2>
         {missions.length === 0 ? (
           <p>No missions yet.</p>
@@ -132,6 +146,20 @@ export default function App() {
               <p style={{ fontSize: 12, color: "#666" }}>
                 Created: {new Date(m.createdAt).toLocaleTimeString()}
               </p>
+              <button
+                onClick={() => handleDelete(m.id, m.title)}
+                style={{
+                  marginTop: 8,
+                  padding: "4px 8px",
+                  background: "#e53e3e",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                }}
+              >
+                Delete
+              </button>
             </div>
           ))
         )}
