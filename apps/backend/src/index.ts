@@ -8,35 +8,32 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// Allow both HTTP + Socket.io from any origin
+// Allow CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
 
-// ① Must be before your routes so JSON bodies are parsed
-app.use(express.json());
-
-// In-memory storage
-type Mission = {
+// In-memory storage for Call Outs
+interface CallOut {
   id: string;
   title: string;
   status: "pending" | "active" | "completed";
   latitude: number;
   longitude: number;
   createdAt: string;
-};
-const missions: Mission[] = [];
+}
+const callOuts: CallOut[] = [];
 
-// ② Your API routes
-app.get("/missions", (_req, res) => {
-  console.log("GET /missions");
-  res.json(missions);
+// 1️⃣ GET all Call Outs
+app.get("/callouts", (_req, res) => {
+  console.log("GET /callouts");
+  res.json(callOuts);
 });
 
-// Post a mission
-app.post("/missions", (req, res) => {
-  console.log("POST /missions", req.body);
+// 2️⃣ Create a new Call Out
+app.post("/callouts", (req, res) => {
+  console.log("POST /callouts", req.body);
   const { title, status, latitude, longitude } = req.body;
-  const m: Mission = {
+  const newCallOut: CallOut = {
     id: uuidv4(),
     title,
     status,
@@ -44,26 +41,32 @@ app.post("/missions", (req, res) => {
     longitude,
     createdAt: new Date().toISOString(),
   };
-  missions.push(m);
-  io.emit("mission:new", m);
-  res.status(201).json(m);
+  callOuts.push(newCallOut);
+  // Notify clients of new Call Out
+  io.emit("callout:new", newCallOut);
+  res.status(201).json(newCallOut);
 });
 
-// Delete a mission
-app.delete("/missions/:id", (req, res) => {
+// 3️⃣ Delete a Call Out
+app.delete("/callouts/:id", (req, res) => {
   const { id } = req.params;
-  const idx = missions.findIndex((m) => m.id === id);
+  const idx = callOuts.findIndex((c) => c.id === id);
   if (idx === -1) {
-    return res.status(404).json({ error: "Mission not found" });
+    return res.status(404).json({ error: "Call Out not found" });
   }
-  const [deleted] = missions.splice(idx, 1);
-  // Notify all clients that this mission was removed
-  io.emit("mission:delete", { id: deleted.id });
-  res.status(204).send(); // no content
+  callOuts.splice(idx, 1);
+  // Notify clients of deletion
+  io.emit("callout:delete", { id });
+  res.status(204).send();
 });
 
-// ③ Catch‐all logger to see unhandled routes
-app.use((req, res, next) => {
+// 4️⃣ (Optional) Health check at root
+app.get("/", (_req, res) => {
+  res.send("SAR Call‑Out API running");
+});
+
+// 5️⃣ Catch‑all logger for unhandled routes
+app.use((req, res) => {
   console.log(`❓ ${req.method} ${req.url} — no handler`);
   res.status(404).send(`Cannot ${req.method} ${req.url}`);
 });

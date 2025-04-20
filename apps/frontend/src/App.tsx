@@ -17,16 +17,16 @@ L.Icon.Default.mergeOptions({
 const API_URL = process.env.REACT_APP_API_URL!;
 const socket = io(API_URL);
 
-interface Mission {
+interface CallOut {
   id: string;
   title: string;
-  status: string;
+  status: "pending" | "active" | "completed";
   latitude: number;
   longitude: number;
   createdAt: string;
 }
 
-// Utility to invalidate map size after render
+// Utility to fix Leaflet container size
 function MapInvalidate() {
   const map = useMap();
   useEffect(() => {
@@ -36,7 +36,7 @@ function MapInvalidate() {
 }
 
 export default function App() {
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const [callOuts, setCallOuts] = useState<CallOut[]>([]);
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<"pending" | "active" | "completed">(
     "pending"
@@ -45,21 +45,23 @@ export default function App() {
   const [longitude, setLongitude] = useState("");
 
   useEffect(() => {
-    fetch(`${API_URL}/missions`)
+    // Load existing call outs
+    fetch(`${API_URL}/callouts`)
       .then((r) => r.json())
-      .then(setMissions)
+      .then(setCallOuts)
       .catch(console.error);
 
-    socket.on("mission:new", (m: Mission) => {
-      setMissions((curr) => [...curr, m]);
+    // Real-time listeners
+    socket.on("callout:new", (c: CallOut) => {
+      setCallOuts((curr) => [...curr, c]);
     });
-    socket.on("mission:delete", ({ id }: { id: string }) => {
-      setMissions((curr) => curr.filter((m) => m.id !== id));
+    socket.on("callout:delete", ({ id }: { id: string }) => {
+      setCallOuts((curr) => curr.filter((c) => c.id !== id));
     });
 
     return () => {
-      socket.off("mission:new");
-      socket.off("mission:delete");
+      socket.off("callout:new");
+      socket.off("callout:delete");
     };
   }, []);
 
@@ -71,7 +73,7 @@ export default function App() {
       return alert("Please fill in all fields.");
     }
     try {
-      const res = await fetch(`${API_URL}/missions`, {
+      const res = await fetch(`${API_URL}/callouts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, status, latitude: lat, longitude: lng }),
@@ -83,14 +85,16 @@ export default function App() {
       setLongitude("");
     } catch (err: any) {
       console.error(err);
-      alert(`Failed to create mission: ${err.message}`);
+      alert(`Failed to create call out: ${err.message}`);
     }
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`Delete "${title}"?`)) return;
-    const res = await fetch(`${API_URL}/missions/${id}`, { method: "DELETE" });
-    if (!res.ok) alert("Failed to delete mission");
+    if (!window.confirm(`Delete call out "${title}"?`)) return;
+    const res = await fetch(`${API_URL}/callouts/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert("Failed to delete call out");
+    }
     // removal via socket
   };
 
@@ -105,7 +109,7 @@ export default function App() {
           borderRight: "1px solid #ddd",
         }}
       >
-        <h2>New Mission</h2>
+        <h2>New Call Out</h2>
         <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
           <input
             type="text"
@@ -138,17 +142,17 @@ export default function App() {
             style={{ width: "100%", padding: 8, marginBottom: 8 }}
           />
           <button type="submit" style={{ padding: "8px 16px" }}>
-            Add Mission
+            Add Call Out
           </button>
         </form>
 
-        <h2>Active Missions</h2>
-        {missions.length === 0 ? (
-          <p>No missions yet.</p>
+        <h2>Active Call Outs</h2>
+        {callOuts.length === 0 ? (
+          <p>No call outs yet.</p>
         ) : (
-          missions.map((m) => (
+          callOuts.map((c) => (
             <div
-              key={m.id}
+              key={c.id}
               style={{
                 marginBottom: 12,
                 padding: 12,
@@ -156,13 +160,13 @@ export default function App() {
                 borderRadius: 4,
               }}
             >
-              <strong>{m.title}</strong>
-              <p>Status: {m.status}</p>
+              <strong>{c.title}</strong>
+              <p>Status: {c.status}</p>
               <p style={{ fontSize: 12, color: "#666" }}>
-                Created: {new Date(m.createdAt).toLocaleTimeString()}
+                Created: {new Date(c.createdAt).toLocaleTimeString()}
               </p>
               <button
-                onClick={() => handleDelete(m.id, m.title)}
+                onClick={() => handleDelete(c.id, c.title)}
                 style={{
                   marginTop: 8,
                   padding: "4px 8px",
@@ -184,7 +188,7 @@ export default function App() {
       <div style={{ flex: 1, position: "relative" }}>
         <MapContainer
           center={[54.2586, -3.2145]}
-          zoom={12}
+          zoom={10}
           style={{
             position: "absolute",
             top: 0,
@@ -195,12 +199,12 @@ export default function App() {
         >
           <MapInvalidate />
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          {missions.map((m) => (
-            <Marker key={m.id} position={[m.latitude, m.longitude]}>
+          {callOuts.map((c) => (
+            <Marker key={c.id} position={[c.latitude, c.longitude]}>
               <Popup>
-                <strong>{m.title}</strong>
+                <strong>{c.title}</strong>
                 <br />
-                Status: {m.status}
+                Status: {c.status}
               </Popup>
             </Marker>
           ))}
