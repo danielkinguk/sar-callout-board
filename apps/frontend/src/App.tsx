@@ -201,6 +201,7 @@ export default function App() {
                 display: "grid",
                 gap: 16,
                 padding: 24,
+                paddingRight: 42,
                 boxSizing: "border-box",
               }}
             >
