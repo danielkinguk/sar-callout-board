@@ -82,12 +82,18 @@ export default function App() {
     socket.on("callout:new", (c: CallOut) =>
       setCallOuts((curr) => [...curr, c])
     );
+    socket.on("callout:update", (updatedCallout: CallOut) =>
+      setCallOuts((curr) =>
+        curr.map((c) => (c.id === updatedCallout.id ? updatedCallout : c))
+      )
+    );
     socket.on("callout:delete", ({ id }: { id: string }) =>
       setCallOuts((curr) => curr.filter((c) => c.id !== id))
     );
 
     return () => {
       socket.off("callout:new");
+      socket.off("callout:update");
       socket.off("callout:delete");
     };
   }, []);
@@ -97,7 +103,7 @@ export default function App() {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const payload: Partial<CallOut> = { name, status };
+    const payload: Partial<CallOut> = { name, status: "active" };
 
     if (osGrid.trim()) {
       payload.osGrid = osGrid.trim();
@@ -254,22 +260,6 @@ export default function App() {
                   width: "100%",
                 }}
               />
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                style={{
-                  padding: "10px",
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  width: "100%",
-                }}
-              >
-                {["pending", "active", "completed"].map((s) => (
-                  <option key={s} value={s}>
-                    {s[0].toUpperCase() + s.slice(1)}
-                  </option>
-                ))}
-              </select>
               <button
                 type="submit"
                 disabled={!canSubmit}
@@ -359,6 +349,65 @@ export default function App() {
                     </button>
                   </div>
                 ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Completed Call Outs */}
+        <div style={{ marginTop: 24 }}>
+          <h2
+            style={{
+              margin: 0,
+              padding: "12px 16px",
+              background: "#f0f0f0",
+              display: "flex",
+              alignItems: "center",
+              cursor: "pointer",
+              userSelect: "none",
+            }}
+            onClick={() => setCollapsedActive(!collapsedActive)}
+          >
+            <span style={{ flex: 1 }}>Completed Call Outs</span>
+            <span style={{ marginLeft: 8 }}>{collapsedActive ? "▼" : "▲"}</span>
+          </h2>
+          {!collapsedActive && (
+            <div style={{ padding: 16 }}>
+              {callOuts.filter((c) => c.status === "completed").length === 0 ? (
+                <p style={{ margin: 0, color: "#666" }}>
+                  No completed call outs
+                </p>
+              ) : (
+                callOuts
+                  .filter((c) => c.status === "completed")
+                  .map((c) => (
+                    <div
+                      key={c.id}
+                      style={{
+                        position: "relative",
+                        padding: 16,
+                        marginBottom: 16,
+                        background: "#f9f9f9",
+                        border: "1px solid #ddd",
+                        borderRadius: 4,
+                      }}
+                    >
+                      <h3 style={{ margin: "0 0 8px" }}>{c.name}</h3>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "0.9em",
+                          color: "#666",
+                        }}
+                      >
+                        {c.osGrid
+                          ? `OS Grid: ${c.osGrid}`
+                          : c.latitude && c.longitude
+                          ? `Lat/Lng: ${c.latitude}, ${c.longitude}`
+                          : "No location"}
+                      </p>
+                    </div>
+                  ))
               )}
             </div>
           )}
