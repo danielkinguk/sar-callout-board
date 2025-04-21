@@ -156,7 +156,7 @@ export default function App() {
       <aside
         style={{
           width: sidebarWidth,
-          padding: 32,
+          padding: 24,
           boxSizing: "border-box",
           background: "#f4f6f8",
           overflowY: "auto",
