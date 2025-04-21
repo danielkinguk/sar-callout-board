@@ -4,16 +4,20 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Fix default Leaflet icon paths
-import markerIconUrl from "leaflet/dist/images/marker-icon.png";
-import markerRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
-import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
-L.Icon.Default.mergeOptions({ iconUrl: markerIconUrl, iconRetinaUrl: markerRetinaUrl, shadowUrl: markerShadowUrl });
+// Leaflet default icon fix
+import markerIconPng from "leaflet/dist/images/marker-icon.png";
+import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
+import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIconPng,
+  iconRetinaUrl: markerIcon2xPng,
+  shadowUrl: markerShadowPng,
+});
 
 const API_URL = process.env.REACT_APP_API_URL!;
 const socket = io(API_URL);
 
-interface CallOut {
+type CallOut = {
   id: string;
   title: string;
   status: "pending" | "active" | "completed";
@@ -21,14 +25,14 @@ interface CallOut {
   longitude?: number;
   osGrid?: string;
   createdAt: string;
-}
+};
 
 type Tab = "map" | "incidents" | "resources" | "settings" | "admin";
 
 function MapInvalidate() {
   const map = useMap();
   useEffect(() => {
-    setTimeout(() => map.invalidateSize(), 0);
+    map.invalidateSize();
   }, [map]);
   return null;
 }
@@ -36,22 +40,34 @@ function MapInvalidate() {
 export default function App() {
   const [callOuts, setCallOuts] = useState<CallOut[]>([]);
   const [title, setTitle] = useState("");
-  const [status, setStatus] = useState<"pending" | "active" | "completed">("pending");
+  const [status, setStatus] = useState<CallOut["status"]>("pending");
   const [osGrid, setOsGrid] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
   const [tab, setTab] = useState<Tab>("map");
   const [formOpen, setFormOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
 
+  // Determine if form can submit
+  const canSubmit = Boolean(
+    title.trim() &&
+      (osGrid.trim().length > 0 ||
+        (lat.trim().length > 0 && lng.trim().length > 0))
+  );
+
+  // Load existing and listen for updates
   useEffect(() => {
     fetch(`${API_URL}/callouts`)
-      .then(res => res.json())
+      .then((r) => r.json())
       .then(setCallOuts)
       .catch(console.error);
 
-    socket.on("callout:new", (newC: CallOut) => setCallOuts(curr => [...curr, newC]));
-    socket.on("callout:delete", ({ id }: { id: string }) => setCallOuts(curr => curr.filter(c => c.id !== id)));
+    socket.on("callout:new", (c: CallOut) => {
+      setCallOuts((prev) => [...prev, c]);
+    });
+    socket.on("callout:delete", ({ id }: { id: string }) => {
+      setCallOuts((prev) => prev.filter((c) => c.id !== id));
+    });
 
     return () => {
       socket.off("callout:new");
@@ -59,20 +75,16 @@ export default function App() {
     };
   }, []);
 
+  // Handle submission
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const payload: any = { title, status };
+    if (!canSubmit) return;
 
-    if (osGrid) {
-      payload.osGrid = osGrid.trim();
-    } else {
-      const lat = parseFloat(latitude);
-      const lng = parseFloat(longitude);
-      if (isNaN(lat) || isNaN(lng)) {
-        return alert("Please enter valid latitude/longitude or an OS grid reference.");
-      }
-      payload.latitude = lat;
-      payload.longitude = lng;
+    const payload: any = { title: title.trim(), status };
+    if (osGrid.trim()) payload.osGrid = osGrid.trim();
+    else {
+      payload.latitude = parseFloat(lat);
+      payload.longitude = parseFloat(lng);
     }
 
     try {
@@ -82,21 +94,23 @@ export default function App() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
+      // clear form; socket listener adds to state
       setTitle("");
       setStatus("pending");
       setOsGrid("");
-      setLatitude("");
-      setLongitude("");
+      setLat("");
+      setLng("");
     } catch (err: any) {
       console.error(err);
-      alert(`Failed to create call out: ${err.message}`);
+      alert(`Error: ${err.message}`);
     }
   };
 
+  // Handle delete
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Delete call out "${name}"?`)) return;
+    if (!window.confirm(`Delete "${name}"?`)) return;
     const res = await fetch(`${API_URL}/callouts/${id}`, { method: "DELETE" });
-    if (!res.ok) alert("Failed to delete call out");
+    if (!res.ok) alert(`Delete failed: ${await res.text()}`);
   };
 
   const tabs = [
@@ -108,87 +122,183 @@ export default function App() {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: 'Arial, sans-serif' }}>
-      <div style={{ width: "28%", padding: 16, background: "#f4f6f8", borderRight: "1px solid #ddd", overflowY: 'auto' }}>
-        <div style={{ background: "#fff", padding: 32, borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.1)', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ flex: 1, textAlign: 'left', fontSize: '1.1em', fontWeight: 'bold', color: '#333' }}>New Call Out</span>
-            <button onClick={() => setFormOpen(open => !open)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
-              <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#007ACC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" style={{ transform: formOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                  <path d="M7 10l5 5 5-5H7z" />
-                </svg>
-              </div>
+    <div style={{ display: "flex", height: "100vh" }}>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: "300px",
+          padding: 16,
+          background: "#f0f0f0",
+          overflowY: "auto",
+        }}
+      >
+        <section style={{ marginBottom: 24 }}>
+          <header
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2>New Call Out</h2>
+            <button onClick={() => setFormOpen((o) => !o)}>
+              {formOpen ? "–" : "+"}
             </button>
-          </div>
+          </header>
           {formOpen && (
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16, boxSizing: 'border-box' }}>
-              <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} style={{ padding: '10px', borderRadius: 4, border: '1px solid #ccc', width: '100%' }} />
-              <input type="text" placeholder="OS Grid Ref (e.g. SD258145)" value={osGrid} onChange={e => setOsGrid(e.target.value)} style={{ padding: '10px', borderRadius: 4, border: '1px solid #ccc', width: '100%' }} />
-              <input type="text" placeholder="Latitude" value={latitude} onChange={e => setLatitude(e.target.value)} style={{ padding: '10px', borderRadius: 4, border: '1px solid #ccc', width: '100%' }} />
-              <input type="text" placeholder="Longitude" value={longitude} onChange={e => setLongitude(e.target.value)} style={{ padding: '10px', borderRadius: 4, border: '1px solid #ccc', width: '100%' }} />
-              <select value={status} onChange={e => setStatus(e.target.value as any)} style={{ padding: '10px', borderRadius: 4, border: '1px solid #ccc', width: '100%' }}>
-                {['pending', 'active', 'completed'].map(s => (
-                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                ))}
+            <form
+              onSubmit={handleSubmit}
+              style={{ display: "grid", gap: 8, marginTop: 8 }}
+            >
+              <input
+                type="text"
+                placeholder="Name"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                style={{ width: "100%", padding: 8, fontWeight: "bold" }}
+              />
+              <input
+                type="text"
+                placeholder="OS Grid Ref"
+                value={osGrid}
+                onChange={(e) => setOsGrid(e.target.value)}
+                style={{ width: "100%", padding: 8 }}
+              />
+              <input
+                type="text"
+                placeholder="Latitude"
+                value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                style={{ width: "100%", padding: 8 }}
+              />
+              <input
+                type="text"
+                placeholder="Longitude"
+                value={lng}
+                onChange={(e) => setLng(e.target.value)}
+                style={{ width: "100%", padding: 8 }}
+              />
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                style={{ width: "100%", padding: 8 }}
+              >
+                <option value="pending">Pending</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
               </select>
-              <button type="submit" style={{ padding: '12px', background: '#007ACC', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>Add Call Out</button>
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                style={{ padding: 8 }}
+              >
+                Add Call Out
+              </button>
             </form>
           )}
-        </div>
-        <div style={{ background: "#fff", padding: 24, borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ flex: 1, fontSize: '1.1em', fontWeight: 'bold', color: '#333' }}>Active Call Outs</span>
-            <button onClick={() => setListOpen(open => !open)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
-              <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#007ACC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" style={{ transform: listOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                  <path d="M7 10l5 5 5-5H7z" />
-                </svg>
-              </div>
+        </section>
+        <section>
+          <header
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2>Active Call Outs</h2>
+            <button onClick={() => setListOpen((o) => !o)}>
+              {listOpen ? "–" : "+"}
             </button>
-          </div>
+          </header>
           {listOpen && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {callOuts.length === 0 ? (
-                <p>No call outs yet.</p>
-              ) : (
-                callOuts.map(c => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{c.title}</span>
-                    <button onClick={() => handleDelete(c.id, c.title)} style={{ color: '#e53e3e', cursor: 'pointer', border: 'none', background: 'none' }}>
-                      ×
-                    </button>
-                  </div>
-                ))
-              )}
+            <ul style={{ listStyle: "none", padding: 0, marginTop: 8 }}>
+              {callOuts.length === 0 && <li>No call outs.</li>}
+              {callOuts.map((c) => (
+                <li
+                  key={c.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  {c.title}
+                  <button
+                    onClick={() => handleDelete(c.id, c.title)}
+                    style={{ fontSize: "1.5em", lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </aside>
+
+      {/* Main Tab & Map Container */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <nav style={{ display: "flex", borderBottom: "1px solid #ccc" }}>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as Tab)}
+              style={{
+                flex: 1,
+                padding: 12,
+                border: "none",
+                borderBottom:
+                  tab === t.key ? "3px solid #007ACC" : "3px solid transparent",
+                background: "none",
+                cursor: "pointer",
+                fontWeight: tab === t.key ? "bold" : "normal",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div style={{ flex: 1, position: "relative" }}>
+          {tab === "map" && (
+            <MapContainer
+              center={[54.2586, -3.2145]}
+              zoom={10}
+              style={{ height: "100%" }}
+            >
+              <MapInvalidate />
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              {callOuts
+                .filter(
+                  (o) => o.latitude !== undefined && o.longitude !== undefined
+                )
+                .map((o) => (
+                  <Marker key={o.id} position={[o.latitude!, o.longitude!]}>
+                    <Popup>
+                      <strong>{o.title}</strong>
+                      <br />
+                      Status: {o.status}
+                      {o.osGrid && (
+                        <>
+                          <br />
+                          OS Grid: {o.osGrid}
+                        </>
+                      )}
+                    </Popup>
+                  </Marker>
+                ))}
+            </MapContainer>
+          )}
+
+          {/* Placeholder panels */}
+          {tab !== "map" && (
+            <div style={{ padding: 16 }}>
+              <h3>{tabs.find((t) => t.key === tab)!.label}</h3>
+              <p>Content for {tab}</p>
             </div>
           )}
         </div>
-      </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", borderBottom: "1px solid #ccc", background: "#f7f7f7" }}>
-          {tabs.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as Tab)} style={{ flex: 1, padding: 14, border: "none", borderBottom: tab === t.key ? "3px solid #007ACC" : "3px solid transparent", background: "transparent", cursor: "pointer", fontWeight: "bold", color: tab === t.key ? "#007ACC" : "#555" }}>{t.label}</button>
-          ))}
-        </div>
-        <div style={{ flex: 1, position: "relative", border: '2px solid #ddd' }}>
-          {tab === "map" && (
-            <MapContainer center={[54.2586, -3.2145]} zoom={10} style={{ height: "100%", width: "100%" }}>
-              <MapInvalidate />
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {callOuts.map(c => (
-                <Marker key={c.id} position={[c.latitude!, c.longitude!]}>  
-                  <Popup><strong>{c.title}</strong><br/>Status: {c.status}</Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          )}
-          {tab === "incidents" && (<div style={{ padding: 24 }}><h3>Incidents</h3><p>List or detailed view here.</p></div>)}
-          {tab === "resources" && (<div style={{ padding: 24 }}><h3>Resources</h3><p>Resources management here.</p></div>)}
-          {tab === "settings" && (<div style={{ padding: 24 }}><h3>Settings</h3><p>Application settings here.</p></div>)}
-          {tab === "admin" && (<div style={{ padding: 24 }}><h3>Admin</h3><p>Admin controls here.</p></div>)}
-        </div>
-      </div>
+      </main>
     </div>
   );
 }
