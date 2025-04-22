@@ -1,15 +1,14 @@
 // apps/frontend/src/App.tsx
 
-// ── Leaflet default‑icon fix (must be before any React‑Leaflet import) ──
+// ── Leaflet default‑icon fix (must come before any React‑Leaflet import) ──
 import L from "leaflet";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
-
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 
-// ── React & app imports ───────────────────────────────────────────────────
+// ── React & Leaflet imports ───────────────────────────────────────────────
 import React, {
   useState,
   useEffect,
@@ -22,28 +21,38 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import OsGridRef from "geodesy/osgridref.js";
 
-// ── Constants & Types ──────────────────────────────────────────────────────
-const API_URL = process.env.REACT_APP_API_URL!;
-const socket = io(API_URL);
-
+// ── Types ───────────────────────────────────────────────────────────────────
 interface CallOut {
   id: string;
   name: string;
-  status: "pending" | "active" | "completed";
+  status: "active" | "completed";
   osGrid?: string;
   latitude?: number;
   longitude?: number;
   createdAt: string;
-  assignedResources?: string[];
+  assignedResources: string[];
 }
-
 interface Resource {
   id: string;
   name: string;
-  category: string;
+  category: "personnel" | "equipment" | "vehicles";
 }
 
-// ── Helper: force Leaflet to recalc size on load ──────────────────────────
+// ── Personnel color mapping ─────────────────────────────────────────────────
+const personnelColorMap: Record<string, string> = {
+  "Team Leader": "#7C3AED",
+  Doctor: "#3182CE",
+  "Cas Care": "#D53F8C",
+  Paramedic: "#38A169",
+  Responder: "#DD6B20",
+  // …add your full list here, matching your palette
+};
+
+// ── Constants ───────────────────────────────────────────────────────────────
+const API_URL = process.env.REACT_APP_API_URL!;
+const socket = io(API_URL);
+
+// ── Helper to force Leaflet to recalc size on load ─────────────────────────
 function MapInvalidate() {
   const map = useMap();
   useEffect(() => {
@@ -52,12 +61,12 @@ function MapInvalidate() {
   return null;
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────
 export default function App() {
-  // —— Splitter state ————————————————————————————————————————————————
+  // — Splitter state —
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [dragging, setDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const onMouseDown = () => setDragging(true);
   const onMouseUp = () => setDragging(false);
@@ -81,7 +90,7 @@ export default function App() {
     };
   }, [onMouseMove]);
 
-  // —— Data & Form state —————————————————————————————————————————————
+  // — Data & UI state —
   const [callOuts, setCallOuts] = useState<CallOut[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -90,11 +99,12 @@ export default function App() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [collapsedNew, setCollapsedNew] = useState(false);
+  const [collapsedActive, setCollapsedActive] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "map" | "incidents" | "resources" | "settings" | "admin"
   >("map");
 
-  // —— Load call‑outs & real‑time listeners —————————————————————————————
+  // — Load call‑outs & socket listeners —
   useEffect(() => {
     fetch(`${API_URL}/callouts`)
       .then((r) => r.json())
@@ -104,40 +114,54 @@ export default function App() {
     socket.on("callout:new", (c: CallOut) =>
       setCallOuts((curr) => [...curr, c])
     );
-    socket.on("callout:delete", ({ id }: { id: string }) =>
-      setCallOuts((curr) => curr.filter((c) => c.id !== id))
+    socket.on("callout:update", (c: CallOut) =>
+      setCallOuts((curr) => curr.map((x) => (x.id === c.id ? c : x)))
     );
-    socket.on("callout:update", (updated: CallOut) =>
-      setCallOuts((curr) =>
-        curr.map((c) => (c.id === updated.id ? updated : c))
-      )
+    socket.on("callout:delete", ({ id }: { id: string }) =>
+      setCallOuts((curr) => curr.filter((x) => x.id !== id))
     );
 
     return () => {
       socket.off("callout:new");
-      socket.off("callout:delete");
       socket.off("callout:update");
+      socket.off("callout:delete");
     };
   }, []);
 
-  // —— Load resources once (needed in detail pane) —────────────────────────
+  // — Load resources & socket listeners —
   useEffect(() => {
     fetch(`${API_URL}/resources`)
-      .then((r) => {
-        if (!r.ok) throw new Error(r.statusText);
-        return r.json();
-      })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
       .then(setResources)
       .catch(console.error);
+
+    socket.on("resource:new", (r: Resource) =>
+      setResources((curr) => [...curr, r])
+    );
+    socket.on("resource:update", (u: Resource) =>
+      setResources((curr) => curr.map((x) => (x.id === u.id ? u : x)))
+    );
+    socket.on("resource:delete", ({ id }: { id: string }) =>
+      setResources((curr) => curr.filter((x) => x.id !== id))
+    );
+
+    return () => {
+      socket.off("resource:new");
+      socket.off("resource:update");
+      socket.off("resource:delete");
+    };
   }, []);
 
-  // —— New Call‑Out form submit —————————————————————————————————————
+  // — New Call‑Out submission —
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const payload: Partial<CallOut> = { name, status: "active" };
-
+    const payload: Partial<CallOut> = {
+      name,
+      status: "active",
+      assignedResources: [],
+    };
     if (osGrid.trim()) {
       try {
         const grid = OsGridRef.parse(osGrid.trim());
@@ -152,7 +176,7 @@ export default function App() {
       const lat = parseFloat(latitude),
         lng = parseFloat(longitude);
       if (isNaN(lat) || isNaN(lng)) {
-        return alert("Please enter an OS Grid ref or valid lat/long.");
+        return alert("Enter an OS Grid ref or valid lat/long.");
       }
       payload.latitude = lat;
       payload.longitude = lng;
@@ -175,14 +199,14 @@ export default function App() {
     }
   };
 
-  // —— Delete a Call‑Out ————————————————————————————————————————————
+  // — Delete Call‑Out —
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this call out?")) return;
     const res = await fetch(`${API_URL}/callouts/${id}`, { method: "DELETE" });
     if (!res.ok) alert("Failed to delete");
   };
 
-  // —— Assign / Unassign resources —————————————————————————————————
+  // — Assign / Unassign resources —
   const assign = async (rid: string) => {
     if (!selectedId) return;
     await fetch(`${API_URL}/callouts/${selectedId}/assign`, {
@@ -200,60 +224,54 @@ export default function App() {
     });
   };
 
-  // —— Form validation —————————————————————————————————————————————
   const canSubmit =
     name.trim() !== "" &&
     (osGrid.trim() !== "" ||
       (latitude.trim() !== "" && longitude.trim() !== ""));
 
-  // —— Derived for selected Call‑Out ———————————————————————————————
-  const selected = callOuts.find((c) => c.id === selectedId);
+  const selected = callOuts.find((c) => c.id === selectedId) || null;
   const assigned = selected?.assignedResources || [];
   const unassigned = resources.filter((r) => !assigned.includes(r.id));
 
-  // —— Render —————————————————————————————————————————————————————————
+  // — Render —
   return (
-    <div
-      ref={containerRef}
-      style={{ display: "flex", height: "100vh", overflow: "hidden" }}
-    >
-      {/* Sidebar: New + Active Call Outs */}
+    <div ref={containerRef} style={{ display: "flex", height: "100vh" }}>
+      {/* Sidebar */}
       <aside
         style={{
           width: sidebarWidth,
-          padding: 24,
+          padding: 16,
           background: "#f4f6f8",
-          boxSizing: "border-box",
           overflowY: "auto",
+          boxSizing: "border-box",
         }}
       >
-        {/* New Call Out Card */}
+        {/* New Call Out */}
         <div
           style={{
+            marginBottom: 24,
             background: "#fff",
             borderRadius: 8,
             boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-            marginBottom: 24,
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              padding: "16px 24px",
+              padding: 16,
               borderBottom: "1px solid #eee",
             }}
           >
             <h2 style={{ flex: 1, margin: 0 }}>New Call Out</h2>
             <button
-              onClick={() => setCollapsedNew((v) => !v)}
+              onClick={() => setCollapsedNew((x) => !x)}
               style={{
+                fontSize: 18,
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                fontSize: 18,
-                transform: collapsedNew ? "rotate(-90deg)" : "rotate(0deg)",
-                transition: "transform 0.2s",
+                transform: collapsedNew ? "rotate(-90deg)" : undefined,
               }}
             >
               ▶
@@ -262,12 +280,7 @@ export default function App() {
           {!collapsedNew && (
             <form
               onSubmit={handleSubmit}
-              style={{
-                display: "grid",
-                gap: 16,
-                padding: 24,
-                boxSizing: "border-box",
-              }}
+              style={{ display: "grid", gap: 12, padding: 16 }}
             >
               <input
                 type="text"
@@ -275,7 +288,7 @@ export default function App() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 style={{
-                  padding: "10px",
+                  padding: 8,
                   borderRadius: 4,
                   border: "1px solid #ccc",
                   width: "100%",
@@ -288,10 +301,9 @@ export default function App() {
                 value={osGrid}
                 onChange={(e) => setOsGrid(e.target.value)}
                 style={{
-                  padding: "10px",
+                  padding: 8,
                   borderRadius: 4,
                   border: "1px solid #ccc",
-                  width: "100%",
                 }}
               />
               <input
@@ -300,10 +312,9 @@ export default function App() {
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value)}
                 style={{
-                  padding: "10px",
+                  padding: 8,
                   borderRadius: 4,
                   border: "1px solid #ccc",
-                  width: "100%",
                 }}
               />
               <input
@@ -312,23 +323,21 @@ export default function App() {
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value)}
                 style={{
-                  padding: "10px",
+                  padding: 8,
                   borderRadius: 4,
                   border: "1px solid #ccc",
-                  width: "100%",
                 }}
               />
               <button
                 type="submit"
                 disabled={!canSubmit}
                 style={{
-                  padding: "12px",
+                  padding: 10,
                   background: canSubmit ? "#007ACC" : "#aaa",
-                  color: "white",
+                  color: "#fff",
                   border: "none",
                   borderRadius: 4,
                   cursor: canSubmit ? "pointer" : "not-allowed",
-                  fontWeight: "bold",
                 }}
               >
                 Add Call Out
@@ -337,7 +346,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Active Call Outs List with Delete & Jump to Detail */}
+        {/* Active Call Outs */}
         <div
           style={{
             background: "#fff",
@@ -349,22 +358,32 @@ export default function App() {
             style={{
               display: "flex",
               alignItems: "center",
-              padding: "16px 24px",
+              padding: 16,
               borderBottom: "1px solid #eee",
             }}
           >
             <h2 style={{ flex: 1, margin: 0 }}>Active Call Outs</h2>
+            <button
+              onClick={() => setCollapsedActive((x) => !x)}
+              style={{
+                fontSize: 18,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                transform: collapsedActive ? "rotate(-90deg)" : undefined,
+              }}
+            >
+              ▶
+            </button>
           </div>
-          <div style={{ padding: 24 }}>
-            {callOuts.length === 0 ? (
-              <p>No call outs.</p>
-            ) : (
-              callOuts.map((c) => (
+          {!collapsedActive && (
+            <div style={{ padding: 16 }}>
+              {callOuts.map((c) => (
                 <div
                   key={c.id}
                   onClick={() => {
-                    setActiveTab("incidents");
                     setSelectedId(c.id);
+                    setActiveTab("incidents");
                   }}
                   style={{
                     position: "relative",
@@ -379,9 +398,8 @@ export default function App() {
                   }}
                 >
                   <strong>{c.name}</strong>
-                  <p style={{ margin: 0, fontSize: 12, color: "#666" }}>
-                    {new Date(c.createdAt).toLocaleString()}
-                  </p>
+                  <br />
+                  <small>{new Date(c.createdAt).toLocaleString()}</small>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -394,7 +412,6 @@ export default function App() {
                       background: "none",
                       border: "none",
                       fontSize: "1.2em",
-                      lineHeight: 1,
                       color: "#c00",
                       cursor: "pointer",
                     }}
@@ -402,9 +419,9 @@ export default function App() {
                     ×
                   </button>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -415,53 +432,41 @@ export default function App() {
           width: 8,
           cursor: "col-resize",
           background: "#888",
-          height: "100%",
-          zIndex: 10,
         }}
       />
 
       {/* Main & Tabs */}
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <nav
-          style={{
-            display: "flex",
-            borderBottom: "1px solid #ddd",
-            background: "#fff",
-          }}
-        >
+        <nav style={{ display: "flex", borderBottom: "1px solid #ddd" }}>
           {[
             { key: "map", label: "Call Out Map" },
             { key: "incidents", label: "Call Outs" },
             { key: "resources", label: "Resources" },
             { key: "settings", label: "Settings" },
             { key: "admin", label: "Admin" },
-          ].map((tab) => (
+          ].map((t) => (
             <div
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              key={t.key}
+              onClick={() => setActiveTab(t.key as any)}
               style={{
-                padding: "16px 24px",
+                padding: "12px 16px",
                 cursor: "pointer",
-                fontWeight: activeTab === tab.key ? "bold" : ("normal" as any),
+                fontWeight: activeTab === t.key ? "bold" : "normal",
                 borderBottom:
-                  activeTab === tab.key
+                  activeTab === t.key
                     ? "3px solid #007ACC"
                     : "3px solid transparent",
               }}
             >
-              {tab.label}
+              {t.label}
             </div>
           ))}
         </nav>
 
-        {/* Incident Map */}
+        {/* Call Out Map */}
         {activeTab === "map" && (
           <div
-            style={{
-              flex: 1,
-              position: "relative",
-              border: "1px solid #ddd",
-            }}
+            style={{ flex: 1, position: "relative", border: "1px solid #ddd" }}
           >
             <MapContainer
               center={[54.2586, -3.2145]}
@@ -489,11 +494,11 @@ export default function App() {
 
         {/* Call Outs & Assignment Pane */}
         {activeTab === "incidents" && (
-          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          <div style={{ display: "flex", flex: 1 }}>
             {/* List */}
-            <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               {callOuts.length === 0 ? (
-                <p>No call outs found.</p>
+                <p>No call outs.</p>
               ) : (
                 <ul style={{ listStyle: "none", padding: 0 }}>
                   {callOuts.map((c) => (
@@ -520,12 +525,12 @@ export default function App() {
               )}
             </div>
 
-            {/* Detail & Assignment Pane */}
+            {/* Detail & Assignment */}
             {selected && (
               <aside
                 style={{
                   width: 300,
-                  padding: 24,
+                  padding: 16,
                   borderLeft: "1px solid #ddd",
                   boxSizing: "border-box",
                   overflowY: "auto",
@@ -539,7 +544,7 @@ export default function App() {
                   <p>None</p>
                 ) : (
                   assigned.map((rid) => {
-                    const r = resources.find((r) => r.id === rid)!;
+                    const r = resources.find((x) => x.id === rid)!;
                     return (
                       <div
                         key={rid}
@@ -559,55 +564,122 @@ export default function App() {
                 <p>
                   <strong>Available Resources</strong>
                 </p>
-                {unassigned.length === 0 ? (
-                  <p>None left</p>
-                ) : (
-                  unassigned.map((r) => (
-                    <div
-                      key={r.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <span>{r.name}</span>
-                      <button onClick={() => assign(r.id)}>+</button>
-                    </div>
-                  ))
-                )}
+                {unassigned.map((r) => (
+                  <div
+                    key={r.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span>{r.name}</span>
+                    <button onClick={() => assign(r.id)}>+</button>
+                  </div>
+                ))}
               </aside>
             )}
           </div>
         )}
 
-        {/* Resources Tab */}
+        {/* Categorized Resources Tab */}
         {activeTab === "resources" && (
-          <div style={{ padding: 24 }}>
+          <div style={{ padding: 16 }}>
             <h2>All Resources</h2>
-            {resources.length === 0 ? (
-              <p>No resources available.</p>
-            ) : (
-              <ul style={{ listStyle: "none", padding: 0 }}>
-                {resources.map((r) => (
-                  <li key={r.id} style={{ marginBottom: 8 }}>
-                    <strong>{r.name}</strong>
-                    <span style={{ marginLeft: 8, color: "#666" }}>
-                      ({r.category})
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+
+            {/* Personnel */}
+            <section style={{ marginBottom: 24 }}>
+              <h3>Personnel</h3>
+              {resources.filter((r) => r.category === "personnel").length ===
+              0 ? (
+                <p>No personnel defined.</p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {resources
+                    .filter((r) => r.category === "personnel")
+                    .map((r) => (
+                      <li
+                        key={r.id}
+                        style={{
+                          display: "inline-block",
+                          margin: "4px",
+                          padding: "6px 12px",
+                          borderRadius: 4,
+                          background: personnelColorMap[r.name] || "#EDF2F7",
+                          color: personnelColorMap[r.name] ? "#fff" : "#333",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {r.name}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Equipment */}
+            <section style={{ marginBottom: 24 }}>
+              <h3>Equipment</h3>
+              {resources.filter((r) => r.category === "equipment").length ===
+              0 ? (
+                <p>No equipment defined.</p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {resources
+                    .filter((r) => r.category === "equipment")
+                    .map((r) => (
+                      <li key={r.id} style={{ marginBottom: 8 }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 12,
+                            height: 12,
+                            background: "#4A5568",
+                            marginRight: 8,
+                          }}
+                        />
+                        {r.name}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Vehicles */}
+            <section>
+              <h3>Vehicles</h3>
+              {resources.filter((r) => r.category === "vehicles").length ===
+              0 ? (
+                <p>No vehicles defined.</p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {resources
+                    .filter((r) => r.category === "vehicles")
+                    .map((r) => (
+                      <li key={r.id} style={{ marginBottom: 8 }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 12,
+                            height: 12,
+                            background: "#2D3748",
+                            marginRight: 8,
+                          }}
+                        />
+                        {r.name}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </section>
           </div>
         )}
 
-        {/* Settings & Admin Tabs */}
         {activeTab === "settings" && (
-          <div style={{ padding: 24 }}>Settings panel</div>
+          <div style={{ padding: 16 }}>Settings panel</div>
         )}
         {activeTab === "admin" && (
-          <div style={{ padding: 24 }}>Admin panel</div>
+          <div style={{ padding: 16 }}>Admin panel</div>
         )}
       </main>
     </div>
