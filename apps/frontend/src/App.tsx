@@ -1,3 +1,15 @@
+// apps/frontend/src/App.tsx
+
+// ── Leaflet default‑icon fix (must be before any React‑Leaflet import) ──
+import L from "leaflet";
+import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
+
+// ── React & app imports ───────────────────────────────────────────────────
 import React, {
   useState,
   useEffect,
@@ -8,7 +20,9 @@ import React, {
 import { io } from "socket.io-client";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import OsGridRef from "geodesy/osgridref.js";
 
+// ── Constants & Types ──────────────────────────────────────────────────────
 const API_URL = process.env.REACT_APP_API_URL!;
 const socket = io(API_URL);
 
@@ -22,7 +36,7 @@ interface CallOut {
   createdAt: string;
 }
 
-// Helper to force Leaflet to recalc size on load
+// ── Helper: force Leaflet to invalidate its size on mount ──────────────────
 function MapInvalidate() {
   const map = useMap();
   useEffect(() => {
@@ -31,8 +45,9 @@ function MapInvalidate() {
   return null;
 }
 
+// ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
-  // ── Splitter state ─────────────────────────────────────────────────────────
+  // —— Splitter state ————————————————————————————————————————————————
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [dragging, setDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -59,20 +74,19 @@ export default function App() {
     };
   }, [onMouseMove]);
 
-  // ── Data & Form state ──────────────────────────────────────────────────────
+  // —— Data & Form state —————————————————————————————————————————————
   const [callOuts, setCallOuts] = useState<CallOut[]>([]);
   const [name, setName] = useState("");
   const [osGrid, setOsGrid] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
-  const [status, setStatus] = useState<CallOut["status"]>("pending");
   const [collapsedNew, setCollapsedNew] = useState(false);
   const [collapsedActive, setCollapsedActive] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "map" | "incidents" | "resources" | "settings" | "admin"
   >("map");
 
-  // ── Load & Listen ─────────────────────────────────────────────────────────
+  // —— Fetch existing & real‑time listeners ———————————————————————————
   useEffect(() => {
     fetch(`${API_URL}/callouts`)
       .then((r) => r.json())
@@ -82,23 +96,17 @@ export default function App() {
     socket.on("callout:new", (c: CallOut) =>
       setCallOuts((curr) => [...curr, c])
     );
-    socket.on("callout:update", (updatedCallout: CallOut) =>
-      setCallOuts((curr) =>
-        curr.map((c) => (c.id === updatedCallout.id ? updatedCallout : c))
-      )
-    );
     socket.on("callout:delete", ({ id }: { id: string }) =>
       setCallOuts((curr) => curr.filter((c) => c.id !== id))
     );
 
     return () => {
       socket.off("callout:new");
-      socket.off("callout:update");
       socket.off("callout:delete");
     };
   }, []);
 
-  // ── Submit & Delete ────────────────────────────────────────────────────────
+  // —— Submit handler (with OS‑Grid → lat/lng conversion) ———————————————————
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -106,7 +114,15 @@ export default function App() {
     const payload: Partial<CallOut> = { name, status: "active" };
 
     if (osGrid.trim()) {
-      payload.osGrid = osGrid.trim();
+      try {
+        const grid = OsGridRef.parse(osGrid.trim());
+        const ll = grid.toLatLon();
+        payload.latitude = ll.lat;
+        payload.longitude = ll.lon;
+        payload.osGrid = osGrid.trim();
+      } catch {
+        return alert("Invalid OS Grid reference");
+      }
     } else {
       const lat = parseFloat(latitude),
         lng = parseFloat(longitude);
@@ -126,33 +142,31 @@ export default function App() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      // clear form; socket will add new entry
+      // clear form; the socket event will add the new call‑out
       setName("");
       setOsGrid("");
       setLatitude("");
       setLongitude("");
-      setStatus("pending");
     } catch (err: any) {
       console.error(err);
       alert(`Failed to create call out: ${err.message}`);
     }
   };
 
+  // —— Delete handler ———————————————————————————————————————————————
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this call out?")) return;
-    const res = await fetch(`${API_URL}/callouts/${id}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(`${API_URL}/callouts/${id}`, { method: "DELETE" });
     if (!res.ok) alert("Failed to delete");
-    // removal via socket
   };
 
+  // —— Form validation —————————————————————————————————————————————
   const canSubmit =
     name.trim() !== "" &&
     (osGrid.trim() !== "" ||
       (latitude.trim() !== "" && longitude.trim() !== ""));
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // —— Render —————————————————————————————————————————————————————————
   return (
     <div
       ref={containerRef}
@@ -168,7 +182,7 @@ export default function App() {
           overflowY: "auto",
         }}
       >
-        {/* New Call Out Card */}
+        {/* New Call Out */}
         <div
           style={{
             background: "#fff",
@@ -187,7 +201,7 @@ export default function App() {
           >
             <h2 style={{ flex: 1, margin: 0 }}>New Call Out</h2>
             <button
-              onClick={() => setCollapsedNew((x) => !x)}
+              onClick={() => setCollapsedNew((v) => !v)}
               style={{
                 background: "none",
                 border: "none",
@@ -207,7 +221,6 @@ export default function App() {
                 display: "grid",
                 gap: 16,
                 padding: 24,
-                paddingRight: 42,
                 boxSizing: "border-box",
               }}
             >
@@ -279,7 +292,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Active Call Outs Card */}
+        {/* Active Call Outs */}
         <div
           style={{
             background: "#fff",
@@ -297,7 +310,7 @@ export default function App() {
           >
             <h2 style={{ flex: 1, margin: 0 }}>Active Call Outs</h2>
             <button
-              onClick={() => setCollapsedActive((x) => !x)}
+              onClick={() => setCollapsedActive((v) => !v)}
               style={{
                 background: "none",
                 border: "none",
@@ -353,68 +366,9 @@ export default function App() {
             </div>
           )}
         </div>
-
-        {/* Completed Call Outs */}
-        <div style={{ marginTop: 24 }}>
-          <h2
-            style={{
-              margin: 0,
-              padding: "12px 16px",
-              background: "#f0f0f0",
-              display: "flex",
-              alignItems: "center",
-              cursor: "pointer",
-              userSelect: "none",
-            }}
-            onClick={() => setCollapsedActive(!collapsedActive)}
-          >
-            <span style={{ flex: 1 }}>Completed Call Outs</span>
-            <span style={{ marginLeft: 8 }}>{collapsedActive ? "▼" : "▲"}</span>
-          </h2>
-          {!collapsedActive && (
-            <div style={{ padding: 16 }}>
-              {callOuts.filter((c) => c.status === "completed").length === 0 ? (
-                <p style={{ margin: 0, color: "#666" }}>
-                  No completed call outs
-                </p>
-              ) : (
-                callOuts
-                  .filter((c) => c.status === "completed")
-                  .map((c) => (
-                    <div
-                      key={c.id}
-                      style={{
-                        position: "relative",
-                        padding: 16,
-                        marginBottom: 16,
-                        background: "#f9f9f9",
-                        border: "1px solid #ddd",
-                        borderRadius: 4,
-                      }}
-                    >
-                      <h3 style={{ margin: "0 0 8px" }}>{c.name}</h3>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "0.9em",
-                          color: "#666",
-                        }}
-                      >
-                        {c.osGrid
-                          ? `OS Grid: ${c.osGrid}`
-                          : c.latitude && c.longitude
-                          ? `Lat/Lng: ${c.latitude}, ${c.longitude}`
-                          : "No location"}
-                      </p>
-                    </div>
-                  ))
-              )}
-            </div>
-          )}
-        </div>
       </aside>
 
-      {/* ── Draggable splitter ───────────────────────────────────────────── */}
+      {/* Splitter */}
       <div
         onMouseDown={onMouseDown}
         style={{
@@ -426,7 +380,7 @@ export default function App() {
         }}
       />
 
-      {/* ── Main & Tabs ──────────────────────────────────────────────────── */}
+      {/* Main & Tabs */}
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <nav
           style={{
@@ -483,7 +437,7 @@ export default function App() {
                       <strong>{c.name}</strong>
                       <br />
                       {c.osGrid
-                        ? `OS Grid: ${c.osGrid}`
+                        ? `OS Grid: ${c.osGrid}`
                         : `Lat/Lng: ${c.latitude}, ${c.longitude}`}
                     </Popup>
                   </Marker>
