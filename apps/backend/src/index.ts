@@ -25,6 +25,7 @@ type Callout = {
   latitude?: number;
   longitude?: number;
   createdAt: string;
+  assignedResources?: string[];
 };
 const callouts: Callout[] = [];
 
@@ -46,10 +47,38 @@ app.post("/callouts", (req, res) => {
     latitude,
     longitude,
     createdAt: new Date().toISOString(),
+    assignedResources: [],
   };
   callouts.push(c);
   io.emit("callout:new", c);
   res.status(201).json(c);
+});
+
+// ── ASSIGN a resource to a Call‑Out ────────────────────────────────────
+app.post("/callouts/:id/assign", (req, res) => {
+  const { id } = req.params;
+  const { resourceId } = req.body;
+  const c = callouts.find((c) => c.id === id);
+  if (!c) return res.status(404).send("Not found");
+  c.assignedResources = c.assignedResources || [];
+  if (!c.assignedResources.includes(resourceId)) {
+    c.assignedResources.push(resourceId);
+    io.emit("callout:update", c);
+  }
+  res.json(c);
+});
+
+// ── UNASSIGN a resource from a Call‑Out ────────────────────────────────
+app.post("/callouts/:id/unassign", (req, res) => {
+  const { id } = req.params;
+  const { resourceId } = req.body;
+  const c = callouts.find((c) => c.id === id);
+  if (!c) return res.status(404).send("Not found");
+  c.assignedResources = (c.assignedResources || []).filter(
+    (rid) => rid !== resourceId
+  );
+  io.emit("callout:update", c);
+  res.json(c);
 });
 
 // ── DELETE a Call‑Out ───────────────────────────────────────────────────

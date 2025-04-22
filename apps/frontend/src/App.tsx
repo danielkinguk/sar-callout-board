@@ -30,37 +30,26 @@ interface CallOut {
   id: string;
   name: string;
   status: "pending" | "active" | "completed";
+  osGrid?: string;
   latitude?: number;
   longitude?: number;
-  osGrid?: string;
   createdAt: string;
+  assignedResources?: string[];
 }
 
-// ── New Resource type for step 3 ────────────────────────────────────────────
 interface Resource {
   id: string;
   name: string;
   category: string;
 }
 
-// ── Helper: force Leaflet to invalidate its size on mount ──────────────────
+// ── Helper: force Leaflet to recalc size on load ──────────────────────────
 function MapInvalidate() {
   const map = useMap();
   useEffect(() => {
     map.invalidateSize();
   }, [map]);
   return null;
-}
-
-// ── Incidents ──
-interface Incident {
-  id: string;
-  name: string;
-  status: string;
-  osGrid?: string;
-  latitude?: number;
-  longitude?: number;
-  createdAt: string;
 }
 
 // ── Main App ───────────────────────────────────────────────────────────────
@@ -94,19 +83,18 @@ export default function App() {
 
   // —— Data & Form state —————————————————————————————————————————————
   const [callOuts, setCallOuts] = useState<CallOut[]>([]);
-  const [resources, setResources] = useState<Resource[]>([]); // ← new
-  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [osGrid, setOsGrid] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [collapsedNew, setCollapsedNew] = useState(false);
-  const [collapsedActive, setCollapsedActive] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "map" | "incidents" | "resources" | "settings" | "admin"
   >("map");
 
-  // —— Fetch existing & real‑time listeners ———————————————————————————
+  // —— Load call‑outs & real‑time listeners —————————————————————————————
   useEffect(() => {
     fetch(`${API_URL}/callouts`)
       .then((r) => r.json())
@@ -119,40 +107,31 @@ export default function App() {
     socket.on("callout:delete", ({ id }: { id: string }) =>
       setCallOuts((curr) => curr.filter((c) => c.id !== id))
     );
+    socket.on("callout:update", (updated: CallOut) =>
+      setCallOuts((curr) =>
+        curr.map((c) => (c.id === updated.id ? updated : c))
+      )
+    );
 
     return () => {
       socket.off("callout:new");
       socket.off("callout:delete");
+      socket.off("callout:update");
     };
   }, []);
 
-  // —— Fetch resources when Resources tab is active —─────────────────────────
+  // —— Load resources once (needed in detail pane) —────────────────────────
   useEffect(() => {
-    if (activeTab === "resources") {
-      fetch(`${API_URL}/resources`)
-        .then((res) => {
-          if (!res.ok) throw new Error(res.statusText);
-          return res.json();
-        })
-        .then((list: Resource[]) => setResources(list))
-        .catch(console.error);
-    }
-  }, [activeTab]);
+    fetch(`${API_URL}/resources`)
+      .then((r) => {
+        if (!r.ok) throw new Error(r.statusText);
+        return r.json();
+      })
+      .then(setResources)
+      .catch(console.error);
+  }, []);
 
-  // —— Fetch incidents when Incident tab is active —─────────────────────────
-  useEffect(() => {
-    if (activeTab === "incidents") {
-      fetch(`${API_URL}/incidents`)
-        .then((res) => {
-          if (!res.ok) throw new Error(res.statusText);
-          return res.json();
-        })
-        .then((list: Incident[]) => setIncidents(list))
-        .catch(console.error);
-    }
-  }, [activeTab]);
-
-  // —— Submit handler (with OS‑Grid → lat/lng conversion) —──────────────────
+  // —— New Call‑Out form submit —————————————————————————————————————
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -173,9 +152,7 @@ export default function App() {
       const lat = parseFloat(latitude),
         lng = parseFloat(longitude);
       if (isNaN(lat) || isNaN(lng)) {
-        return alert(
-          "Please enter an OS Grid ref or valid latitude & longitude."
-        );
+        return alert("Please enter an OS Grid ref or valid lat/long.");
       }
       payload.latitude = lat;
       payload.longitude = lng;
@@ -198,11 +175,29 @@ export default function App() {
     }
   };
 
-  // —— Delete handler ———————————————————————————————————————————————
+  // —— Delete a Call‑Out ————————————————————————————————————————————
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this call out?")) return;
     const res = await fetch(`${API_URL}/callouts/${id}`, { method: "DELETE" });
     if (!res.ok) alert("Failed to delete");
+  };
+
+  // —— Assign / Unassign resources —————————————————————————————————
+  const assign = async (rid: string) => {
+    if (!selectedId) return;
+    await fetch(`${API_URL}/callouts/${selectedId}/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resourceId: rid }),
+    });
+  };
+  const unassign = async (rid: string) => {
+    if (!selectedId) return;
+    await fetch(`${API_URL}/callouts/${selectedId}/unassign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resourceId: rid }),
+    });
   };
 
   // —— Form validation —————————————————————————————————————————————
@@ -211,23 +206,28 @@ export default function App() {
     (osGrid.trim() !== "" ||
       (latitude.trim() !== "" && longitude.trim() !== ""));
 
+  // —— Derived for selected Call‑Out ———————————————————————————————
+  const selected = callOuts.find((c) => c.id === selectedId);
+  const assigned = selected?.assignedResources || [];
+  const unassigned = resources.filter((r) => !assigned.includes(r.id));
+
   // —— Render —————————————————————————————————————————————————————————
   return (
     <div
       ref={containerRef}
       style={{ display: "flex", height: "100vh", overflow: "hidden" }}
     >
-      {/* Sidebar */}
+      {/* Sidebar: New + Active Call Outs */}
       <aside
         style={{
           width: sidebarWidth,
           padding: 24,
-          boxSizing: "border-box",
           background: "#f4f6f8",
+          boxSizing: "border-box",
           overflowY: "auto",
         }}
       >
-        {/* New Call Out */}
+        {/* New Call Out Card */}
         <div
           style={{
             background: "#fff",
@@ -337,7 +337,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Active Call Outs */}
+        {/* Active Call Outs List with Delete & Jump to Detail */}
         <div
           style={{
             background: "#fff",
@@ -354,62 +354,57 @@ export default function App() {
             }}
           >
             <h2 style={{ flex: 1, margin: 0 }}>Active Call Outs</h2>
-            <button
-              onClick={() => setCollapsedActive((v) => !v)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 18,
-                transform: collapsedActive ? "rotate(-90deg)" : "rotate(0deg)",
-                transition: "transform 0.2s",
-              }}
-            >
-              ▶
-            </button>
           </div>
-          {!collapsedActive && (
-            <div style={{ padding: 24, boxSizing: "border-box" }}>
-              {callOuts.length === 0 ? (
-                <p>No call outs.</p>
-              ) : (
-                callOuts.map((c) => (
-                  <div
-                    key={c.id}
+          <div style={{ padding: 24 }}>
+            {callOuts.length === 0 ? (
+              <p>No call outs.</p>
+            ) : (
+              callOuts.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => {
+                    setActiveTab("incidents");
+                    setSelectedId(c.id);
+                  }}
+                  style={{
+                    position: "relative",
+                    marginBottom: 12,
+                    padding: 12,
+                    border:
+                      selectedId === c.id
+                        ? "2px solid #007ACC"
+                        : "1px solid #ccc",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                  }}
+                >
+                  <strong>{c.name}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "#666" }}>
+                    {new Date(c.createdAt).toLocaleString()}
+                  </p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(c.id);
+                    }}
                     style={{
-                      marginBottom: 12,
-                      padding: 12,
-                      border: "1px solid #ccc",
-                      borderRadius: 4,
-                      position: "relative",
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      background: "none",
+                      border: "none",
+                      fontSize: "1.2em",
+                      lineHeight: 1,
+                      color: "#c00",
+                      cursor: "pointer",
                     }}
                   >
-                    <strong>{c.name}</strong>
-                    <p>Status: {c.status}</p>
-                    <p style={{ fontSize: 12, color: "#666" }}>
-                      {new Date(c.createdAt).toLocaleString()}
-                    </p>
-                    <button
-                      onClick={() => handleDelete(c.id)}
-                      style={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        background: "none",
-                        border: "none",
-                        fontSize: "1.5em",
-                        lineHeight: 1,
-                        color: "#c00",
-                        cursor: "pointer",
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+                    ×
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </aside>
 
@@ -459,6 +454,7 @@ export default function App() {
           ))}
         </nav>
 
+        {/* Incident Map */}
         {activeTab === "map" && (
           <div
             style={{
@@ -491,41 +487,101 @@ export default function App() {
           </div>
         )}
 
+        {/* Call Outs & Assignment Pane */}
         {activeTab === "incidents" && (
-          <div style={{ padding: 24 }}>
-            <h2>Call Outs</h2>
-            {incidents.length === 0 ? (
-              <p>No call outs found.</p>
-            ) : (
-              <ul style={{ listStyle: "none", padding: 0 }}>
-                {incidents.map((i) => (
-                  <li
-                    key={i.id}
-                    style={{
-                      marginBottom: 12,
-                      padding: 12,
-                      border: "1px solid #ccc",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      /* later: open detail drawer for i.id */
-                      console.log("Open call out", i.id);
-                    }}
-                  >
-                    <strong>{i.name}</strong>
-                    <br />
-                    <small>
-                      Created: {new Date(i.createdAt).toLocaleString()}
-                    </small>
-                  </li>
-                ))}
-              </ul>
+          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+            {/* List */}
+            <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+              {callOuts.length === 0 ? (
+                <p>No call outs found.</p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {callOuts.map((c) => (
+                    <li
+                      key={c.id}
+                      onClick={() => setSelectedId(c.id)}
+                      style={{
+                        marginBottom: 12,
+                        padding: 12,
+                        border:
+                          selectedId === c.id
+                            ? "2px solid #007ACC"
+                            : "1px solid #ccc",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <strong>{c.name}</strong>
+                      <br />
+                      <small>{new Date(c.createdAt).toLocaleString()}</small>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Detail & Assignment Pane */}
+            {selected && (
+              <aside
+                style={{
+                  width: 300,
+                  padding: 24,
+                  borderLeft: "1px solid #ddd",
+                  boxSizing: "border-box",
+                  overflowY: "auto",
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>{selected.name}</h3>
+                <p>
+                  <strong>Assigned Resources</strong>
+                </p>
+                {assigned.length === 0 ? (
+                  <p>None</p>
+                ) : (
+                  assigned.map((rid) => {
+                    const r = resources.find((r) => r.id === rid)!;
+                    return (
+                      <div
+                        key={rid}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span>{r.name}</span>
+                        <button onClick={() => unassign(rid)}>–</button>
+                      </div>
+                    );
+                  })
+                )}
+                <hr />
+                <p>
+                  <strong>Available Resources</strong>
+                </p>
+                {unassigned.length === 0 ? (
+                  <p>None left</p>
+                ) : (
+                  unassigned.map((r) => (
+                    <div
+                      key={r.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span>{r.name}</span>
+                      <button onClick={() => assign(r.id)}>+</button>
+                    </div>
+                  ))
+                )}
+              </aside>
             )}
           </div>
         )}
 
-        {/* Resources tab: fetch & list */}
+        {/* Resources Tab */}
         {activeTab === "resources" && (
           <div style={{ padding: 24 }}>
             <h2>All Resources</h2>
@@ -546,7 +602,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Settings & Admin placeholders */}
+        {/* Settings & Admin Tabs */}
         {activeTab === "settings" && (
           <div style={{ padding: 24 }}>Settings panel</div>
         )}
