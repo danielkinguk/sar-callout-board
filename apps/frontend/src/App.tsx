@@ -36,6 +36,13 @@ interface CallOut {
   createdAt: string;
 }
 
+// ── New Resource type for step 3 ────────────────────────────────────────────
+interface Resource {
+  id: string;
+  name: string;
+  category: string;
+}
+
 // ── Helper: force Leaflet to invalidate its size on mount ──────────────────
 function MapInvalidate() {
   const map = useMap();
@@ -43,6 +50,17 @@ function MapInvalidate() {
     map.invalidateSize();
   }, [map]);
   return null;
+}
+
+// ── Incidents ──
+interface Incident {
+  id: string;
+  name: string;
+  status: string;
+  osGrid?: string;
+  latitude?: number;
+  longitude?: number;
+  createdAt: string;
 }
 
 // ── Main App ───────────────────────────────────────────────────────────────
@@ -76,6 +94,8 @@ export default function App() {
 
   // —— Data & Form state —————————————————————————————————————————————
   const [callOuts, setCallOuts] = useState<CallOut[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]); // ← new
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [name, setName] = useState("");
   const [osGrid, setOsGrid] = useState("");
   const [latitude, setLatitude] = useState("");
@@ -106,7 +126,33 @@ export default function App() {
     };
   }, []);
 
-  // —— Submit handler (with OS‑Grid → lat/lng conversion) ———————————————————
+  // —— Fetch resources when Resources tab is active —─────────────────────────
+  useEffect(() => {
+    if (activeTab === "resources") {
+      fetch(`${API_URL}/resources`)
+        .then((res) => {
+          if (!res.ok) throw new Error(res.statusText);
+          return res.json();
+        })
+        .then((list: Resource[]) => setResources(list))
+        .catch(console.error);
+    }
+  }, [activeTab]);
+
+  // —— Fetch incidents when Incident tab is active —─────────────────────────
+  useEffect(() => {
+    if (activeTab === "incidents") {
+      fetch(`${API_URL}/incidents`)
+        .then((res) => {
+          if (!res.ok) throw new Error(res.statusText);
+          return res.json();
+        })
+        .then((list: Incident[]) => setIncidents(list))
+        .catch(console.error);
+    }
+  }, [activeTab]);
+
+  // —— Submit handler (with OS‑Grid → lat/lng conversion) —──────────────────
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -142,7 +188,6 @@ export default function App() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      // clear form; the socket event will add the new call‑out
       setName("");
       setOsGrid("");
       setLatitude("");
@@ -390,8 +435,8 @@ export default function App() {
           }}
         >
           {[
-            { key: "map", label: "Incident Map" },
-            { key: "incidents", label: "Incidents" },
+            { key: "map", label: "Call Out Map" },
+            { key: "incidents", label: "Call Outs" },
             { key: "resources", label: "Resources" },
             { key: "settings", label: "Settings" },
             { key: "admin", label: "Admin" },
@@ -445,12 +490,63 @@ export default function App() {
             </MapContainer>
           </div>
         )}
+
         {activeTab === "incidents" && (
-          <div style={{ padding: 24 }}>Incidents panel</div>
+          <div style={{ padding: 24 }}>
+            <h2>Call Outs</h2>
+            {incidents.length === 0 ? (
+              <p>No call outs found.</p>
+            ) : (
+              <ul style={{ listStyle: "none", padding: 0 }}>
+                {incidents.map((i) => (
+                  <li
+                    key={i.id}
+                    style={{
+                      marginBottom: 12,
+                      padding: 12,
+                      border: "1px solid #ccc",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => {
+                      /* later: open detail drawer for i.id */
+                      console.log("Open call out", i.id);
+                    }}
+                  >
+                    <strong>{i.name}</strong>
+                    <br />
+                    <small>
+                      Created: {new Date(i.createdAt).toLocaleString()}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
+
+        {/* Resources tab: fetch & list */}
         {activeTab === "resources" && (
-          <div style={{ padding: 24 }}>Resources panel</div>
+          <div style={{ padding: 24 }}>
+            <h2>All Resources</h2>
+            {resources.length === 0 ? (
+              <p>No resources available.</p>
+            ) : (
+              <ul style={{ listStyle: "none", padding: 0 }}>
+                {resources.map((r) => (
+                  <li key={r.id} style={{ marginBottom: 8 }}>
+                    <strong>{r.name}</strong>
+                    <span style={{ marginLeft: 8, color: "#666" }}>
+                      ({r.category})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
+
+        {/* Settings & Admin placeholders */}
         {activeTab === "settings" && (
           <div style={{ padding: 24 }}>Settings panel</div>
         )}

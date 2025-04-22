@@ -1,0 +1,133 @@
+[
+    {
+      "id": "e1a1f0b2-9c3d-4e7f-8b2a-5d6e7f8a9b0c",
+      "name": "SGLP (Kisu)",
+      "category": "medical"
+    },
+    {
+      "id": "f2b2e1c3-0d4e-5f6a-9b3c-7d8e9f0a1b2c",
+      "name": "Search Group First Aid Kit",
+      "category": "medical"
+    },
+    {
+      "id": "a3c3d2e4-1f5a-6b7c-8d9e-0f1a2b3c4d5e",
+      "name": "Warm Kit 1",
+      "category": "kit"
+    },
+    {
+      "id": "b4d4e3f5-2a6b-7c8d-9e0f-1a2b3c4d5e6f",
+      "name": "Warm Kit 2",
+      "category": "kit"
+    },
+    {
+      "id": "c5e5f4a6-3b7c-8d9e-0f1a-2b3c4d5e6f7a",
+      "name": "Confidence Rope 1",
+      "category": "rope"
+    },
+    {
+      "id": "d6f6a5b7-4c8d-9e0f-1a2b-3c4d5e6f7a8b",
+      "name": "Confidence Rope 2",
+      "category": "rope"
+    },
+    {
+      "id": "e7a7b6c8-5d9e-0f1a-2b3c-4d5e6f7a8b9c",
+      "name": "Water Safety Kit",
+      "category": "kit"
+    },
+    {
+      "id": "f8b8c7d9-6e0f-1a2b-3c4d-5e6f7a8b9c0d",
+      "name": "Winter Safety Kit",
+      "category": "kit"
+    },
+    {
+      "id": "a9c9d8e0-7f1a-2b3c-4d5e-6f7a8b9c0d1e",
+      "name": "Red Medical",
+      "category": "medical"
+    },
+    {
+      "id": "b0d0e9f1-8a2b-3c4d-5e6f-7a8b9c0d1e2f",
+      "name": "Blue Medical",
+      "category": "medical"
+    },
+    {
+      "id": "c1e1f0a2-9b3c-4d5e-6f7a-8b9c0d1e2f3a",
+      "name": "Black Medical",
+      "category": "medical"
+    },
+    {
+      "id": "d2f2a1b3-0c4d-5e6f-7a8b-9c0d1e2f3a4b",
+      "name": "CAS Bag",
+      "category": "medical"
+    },
+    {
+      "id": "e3a3b2c4-1d5e-6f7a-8b9c-0d1e2f3a4b5c",
+      "name": "VACMAT",
+      "category": "medical"
+    },
+    {
+      "id": "f4b4c3d5-2e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Stretcher Head",
+      "category": "equipment"
+    },
+    {
+      "id": "a5c5d4e6-3f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "Stretcher Foot (Heli Straps)",
+      "category": "equipment"
+    },
+    {
+      "id": "b6d6e5f7-4a8b-9c0d-1e2f-3a4b5c6d7e8f",
+      "name": "Steep Ground Kit",
+      "category": "kit"
+    },
+    {
+      "id": "c7e7f6a8-5b9c-0d1e-2f3a-4b5c6d7e8f9a",
+      "name": "Crag Sack Red",
+      "category": "bag"
+    },
+    {
+      "id": "d8a8b7c9-6c0d-1e2f-3a4b-5c6d7e8f9a0b",
+      "name": "Crag Sack Orange",
+      "category": "bag"
+    },
+    {
+      "id": "e9b9c8d0-7d1e-2f3a-4b5c-6d7e8f9a0b1c",
+      "name": "Crag Sack Blue",
+      "category": "bag"
+    },
+    {
+      "id": "f0c0d9e1-8e2f-3a4b-5c6d-7e8f9a0b1c2d",
+      "name": "Wheel",
+      "category": "equipment"
+    },
+    {
+      "id": "a1d1e0f2-9f3a-4b5c-6d7e-8f9a0b1c2d3e",
+      "name": "130m Static Rope",
+      "category": "rope"
+    },
+    {
+      "id": "b2e2f1a3-0a4b-5c6d-7e8f-9a0b1c2d3e4f",
+      "name": "60m Static Rope",
+      "category": "rope"
+    },
+    {
+      "id": "c3f3a2b4-1b5c-6d7e-8f9a-0b1c2d3e4f5a",
+      "name": "Drone",
+      "category": "equipment"
+    },
+    {
+      "id": "d4a4b3c5-2e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "DM1",
+      "category": "vehicle"
+    },
+    {
+      "id": "e5b5c4d6-3f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "DM2",
+      "category": "vehicle"
+    },
+    {
+      "id": "f6c6d5e7-4a8b-9c0d-1e2f-3a4b5c6d7e8f",
+      "name": "DM3",
+      "category": "vehicle"
+    }
+  ]
+  
