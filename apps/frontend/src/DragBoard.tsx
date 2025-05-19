@@ -22,7 +22,7 @@ interface Resource {
 }
 
 // Initial demo data: replace with your API-loaded data
-const initialResources: { [columnId: string]: Resource[] } = {
+const initialResources: Record<string, Resource[]> = {
   available: [
     { id: "r1", label: "Team Leader", type: "PERSONNEL" },
     { id: "r2", label: "4x4 Vehicle", type: "VEHICLE" },
@@ -32,7 +32,6 @@ const initialResources: { [columnId: string]: Resource[] } = {
   teamB: [],
 };
 
-// A draggable "strip"
 function SortableStrip({ resource }: { resource: Resource }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: resource.id });
@@ -56,7 +55,6 @@ function SortableStrip({ resource }: { resource: Resource }) {
   );
 }
 
-// A droppable column
 function DroppableColumn({ id, items }: { id: string; items: Resource[] }) {
   const { setNodeRef } = useDroppable({ id, data: { columnId: id } });
 
@@ -75,10 +73,10 @@ function DroppableColumn({ id, items }: { id: string; items: Resource[] }) {
   );
 }
 
-const App: React.FC = () => {
+export default function DragBoard() {
   const [columns, setColumns] = useState(initialResources);
 
-  // Static sensor descriptor; no hooks called before context
+  // Static sensor descriptor to avoid internal hook calls
   const sensors: SensorDescriptor<any>[] = [
     { sensor: PointerSensor, options: {} },
   ];
@@ -123,6 +121,4 @@ const App: React.FC = () => {
       </div>
     </DndContext>
   );
-};
-
-export default App;
+}
