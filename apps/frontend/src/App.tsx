@@ -1,5 +1,7 @@
 // apps/frontend/src/App.tsx
 
+import DragBoard from "./DragBoard";
+
 // ── Leaflet default‑icon fix (must come before any React‑Leaflet import) ──
 import L from "leaflet";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
@@ -232,6 +234,13 @@ export default function App() {
   const selected = callOuts.find((c) => c.id === selectedId) || null;
   const assigned = selected?.assignedResources || [];
   const unassigned = resources.filter((r) => !assigned.includes(r.id));
+
+  const App = () => (
+    <div className="h-full">
+      {/* any wrappers or headers */}
+      <DragBoard />
+    </div>
+  );
 
   // — Render —
   return (
