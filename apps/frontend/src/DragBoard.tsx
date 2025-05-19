@@ -1,13 +1,11 @@
-// apps/frontend/src/DragBoard.tsx
 import React, { useState } from "react";
 import {
   DndContext,
   closestCenter,
   PointerSensor,
-  useSensor,
-  useSensors,
   DragEndEvent,
   useDroppable,
+  type SensorDescriptor,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -34,6 +32,7 @@ const initialResources: { [columnId: string]: Resource[] } = {
   teamB: [],
 };
 
+// A draggable "strip"
 function SortableStrip({ resource }: { resource: Resource }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: resource.id });
@@ -43,6 +42,7 @@ function SortableStrip({ resource }: { resource: Resource }) {
       : undefined,
     transition,
   };
+
   return (
     <div
       ref={setNodeRef}
@@ -56,8 +56,10 @@ function SortableStrip({ resource }: { resource: Resource }) {
   );
 }
 
+// A droppable column
 function DroppableColumn({ id, items }: { id: string; items: Resource[] }) {
   const { setNodeRef } = useDroppable({ id, data: { columnId: id } });
+
   return (
     <div ref={setNodeRef} className="bg-white p-4 rounded shadow">
       <h2 className="font-bold mb-2 capitalize">{id}</h2>
@@ -73,13 +75,18 @@ function DroppableColumn({ id, items }: { id: string; items: Resource[] }) {
   );
 }
 
-export default function DragBoard() {
+const App: React.FC = () => {
   const [columns, setColumns] = useState(initialResources);
-  const sensors = useSensors(useSensor(PointerSensor));
+
+  // Static sensor descriptor; no hooks called before context
+  const sensors: SensorDescriptor<any>[] = [
+    { sensor: PointerSensor, options: {} },
+  ];
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
+
     const fromColumn = Object.keys(columns).find((col) =>
       columns[col].some((res) => res.id === active.id)
     );
@@ -116,4 +123,6 @@ export default function DragBoard() {
       </div>
     </DndContext>
   );
-}
+};
+
+export default App;
