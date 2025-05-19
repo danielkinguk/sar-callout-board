@@ -54,6 +54,6 @@
       "@dnd-kit/core": "latest",
       "@dnd-kit/sortable": "latest",
       // plus any leaflet/react-leaflet deps you had
-    }
+    },
   }
 }
