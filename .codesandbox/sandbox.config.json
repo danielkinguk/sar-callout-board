@@ -1,0 +1,4 @@
+{
+    "template": "create-react-app",
+    "root": "apps/frontend"
+  }
