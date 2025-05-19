@@ -43,4 +43,17 @@
     "@types/react-dom": "^19.1.2",
     "typescript": "^5.8.3"
   }
+    "scripts": {
+      "start": "react-scripts start",
+      // …
+    },
+    "dependencies": {
+      "react": "...",
+      "react-dom": "...",
+      // and now:
+      "@dnd-kit/core": "latest",
+      "@dnd-kit/sortable": "latest",
+      // plus any leaflet/react-leaflet deps you had
+    }
+  }
 }
