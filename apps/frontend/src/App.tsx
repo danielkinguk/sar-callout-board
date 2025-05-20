@@ -65,33 +65,22 @@ function MapInvalidate() {
 }
 
 // ── Top-level navigation bar ─────────────────────────────────────────────
-function MainNav() {
-  const linkStyle = ({ isActive }: { isActive: boolean }) => ({
+ function MainNav() {
+   const linkStyle = ({ isActive }: { isActive: boolean }) => ({
     padding: "12px 16px",
     fontWeight: isActive ? "bold" : "normal",
-    borderBottom: isActive ? "3px solid #007ACC" : "3px solid transparent",
-    cursor: "pointer",
-  });
+     borderBottom: isActive ? "3px solid #007ACC" : "3px solid transparent",
+     cursor: "pointer",
+   });
   return (
     <nav style={{ display: "flex", borderBottom: "1px solid #ddd" }}>
-      <NavLink to="/" end style={linkStyle}>
-        Map
-      </NavLink>
-      <NavLink to="/calls" style={linkStyle}>
-        Call Outs
-      </NavLink>
-      <NavLink to="/resources" style={linkStyle}>
-        Resources
-      </NavLink>
-      <NavLink to="/settings" style={linkStyle}>
-        Settings
-      </NavLink>
-      <NavLink to="/admin" style={linkStyle}>
-        Admin
-      </NavLink>
-    </nav>
-  );
-}
+      <NavLink to="/" end      style={linkStyle}>Map</NavLink>
+       <NavLink to="/calls"     style={linkStyle}>Call Outs</NavLink>
+      <NavLink to="/resources" style={linkStyle}>Resources</NavLink>
+       <NavLink to="/settings"  style={linkStyle}>Settings</NavLink>
+      <NavLink to="/admin"     style={linkStyle}>Admin</NavLink>
+     </nav>
+
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function App() {
