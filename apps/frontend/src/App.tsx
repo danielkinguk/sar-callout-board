@@ -1,8 +1,6 @@
 // apps/frontend/src/App.tsx
 
 import DragBoard from "./DragBoard";
-
-// ── Leaflet default‑icon fix (must come before any React‑Leaflet import) ──
 import L from "leaflet";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
