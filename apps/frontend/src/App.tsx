@@ -22,6 +22,7 @@ import { io } from "socket.io-client";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import OsGridRef from "geodesy/osgridref.js";
+import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 interface CallOut {
@@ -102,9 +103,6 @@ export default function App() {
   const [longitude, setLongitude] = useState("");
   const [collapsedNew, setCollapsedNew] = useState(false);
   const [collapsedActive, setCollapsedActive] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "map" | "incidents" | "resources" | "settings" | "admin"
-  >("map");
 
   // — Load call‑outs & socket listeners —
   useEffect(() => {
@@ -244,7 +242,8 @@ export default function App() {
 
   // — Render —
   return (
-    <div ref={containerRef} style={{ display: "flex", height: "100vh" }}>
+    <BrowserRouter>
+      <div ref={containerRef} style={{ display: "flex", height: "100vh" }}>
       {/* Sidebar */}
       <aside
         style={{
