@@ -448,7 +448,7 @@ export default function App() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <nav style={{ display: "flex", borderBottom: "1px solid #ddd" }}>
           {[
-            { key: "map", label: "Call Out Map" },
+            { key: "map", label: "Map" },
             { key: "incidents", label: "Call Outs" },
             { key: "resources", label: "Resources" },
             { key: "settings", label: "Settings" },
@@ -472,7 +472,7 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Call Out Map */}
+        {/* Map */}
         {activeTab === "map" && (
           <div
             style={{ flex: 1, position: "relative", border: "1px solid #ddd" }}
