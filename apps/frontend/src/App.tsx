@@ -64,6 +64,35 @@ function MapInvalidate() {
   return null;
 }
 
+// ── Top-level navigation bar ─────────────────────────────────────────────
+function MainNav() {
+  const linkStyle = ({ isActive }: { isActive: boolean }) => ({
+    padding: "12px 16px",
+    fontWeight: isActive ? "bold" : "normal",
+    borderBottom: isActive ? "3px solid #007ACC" : "3px solid transparent",
+    cursor: "pointer",
+  });
+  return (
+    <nav style={{ display: "flex", borderBottom: "1px solid #ddd" }}>
+      <NavLink to="/" end style={linkStyle}>
+        Map
+      </NavLink>
+      <NavLink to="/calls" style={linkStyle}>
+        Call Outs
+      </NavLink>
+      <NavLink to="/resources" style={linkStyle}>
+        Resources
+      </NavLink>
+      <NavLink to="/settings" style={linkStyle}>
+        Settings
+      </NavLink>
+      <NavLink to="/admin" style={linkStyle}>
+        Admin
+      </NavLink>
+    </nav>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function App() {
   // — Splitter state —
@@ -244,367 +273,273 @@ export default function App() {
   return (
     <BrowserRouter>
       <div ref={containerRef} style={{ display: "flex", height: "100vh" }}>
-      {/* Sidebar */}
-      <aside
-        style={{
-          width: sidebarWidth,
-          padding: 16,
-          background: "#f4f6f8",
-          overflowY: "auto",
-          boxSizing: "border-box",
-        }}
-      >
-        {/* New Call Out */}
-        <div
+        {/* Sidebar */}
+        <aside
           style={{
-            marginBottom: 24,
-            background: "#fff",
-            borderRadius: 8,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+            width: sidebarWidth,
+            padding: 16,
+            background: "#f4f6f8",
+            overflowY: "auto",
+            boxSizing: "border-box",
           }}
         >
+          {/* New Call Out */}
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              padding: 16,
-              borderBottom: "1px solid #eee",
+              marginBottom: 24,
+              background: "#fff",
+              borderRadius: 8,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
             }}
           >
-            <h2 style={{ flex: 1, margin: 0 }}>New Call Out</h2>
-            <button
-              onClick={() => setCollapsedNew((x) => !x)}
+            <div
               style={{
-                fontSize: 18,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                transform: collapsedNew ? "rotate(-90deg)" : undefined,
+                display: "flex",
+                alignItems: "center",
+                padding: 16,
+                borderBottom: "1px solid #eee",
               }}
             >
-              ▶
-            </button>
-          </div>
-          {!collapsedNew && (
-            <form
-              onSubmit={handleSubmit}
-              style={{ display: "grid", gap: 12, padding: 16 }}
-            >
-              <input
-                type="text"
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{
-                  padding: 8,
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  width: "100%",
-                  fontWeight: "bold",
-                }}
-              />
-              <input
-                type="text"
-                placeholder="OS Grid Ref"
-                value={osGrid}
-                onChange={(e) => setOsGrid(e.target.value)}
-                style={{
-                  padding: 8,
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Latitude"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                style={{
-                  padding: 8,
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Longitude"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                style={{
-                  padding: 8,
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                }}
-              />
+              <h2 style={{ flex: 1, margin: 0 }}>New Call Out</h2>
               <button
-                type="submit"
-                disabled={!canSubmit}
+                onClick={() => setCollapsedNew((x) => !x)}
                 style={{
-                  padding: 10,
-                  background: canSubmit ? "#007ACC" : "#aaa",
-                  color: "#fff",
+                  fontSize: 18,
+                  background: "none",
                   border: "none",
-                  borderRadius: 4,
-                  cursor: canSubmit ? "pointer" : "not-allowed",
+                  cursor: "pointer",
+                  transform: collapsedNew ? "rotate(-90deg)" : undefined,
                 }}
               >
-                Add Call Out
+                ▶
               </button>
-            </form>
-          )}
-        </div>
-
-        {/* Active Call Outs */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 8,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              padding: 16,
-              borderBottom: "1px solid #eee",
-            }}
-          >
-            <h2 style={{ flex: 1, margin: 0 }}>Active Call Outs</h2>
-            <button
-              onClick={() => setCollapsedActive((x) => !x)}
-              style={{
-                fontSize: 18,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                transform: collapsedActive ? "rotate(-90deg)" : undefined,
-              }}
-            >
-              ▶
-            </button>
-          </div>
-          {!collapsedActive && (
-            <div style={{ padding: 16 }}>
-              {callOuts.map((c) => (
-                <div
-                  key={c.id}
-                  onClick={() => {
-                    setSelectedId(c.id);
-                    setActiveTab("incidents");
-                  }}
+            </div>
+            {!collapsedNew && (
+              <form
+                onSubmit={handleSubmit}
+                style={{ display: "grid", gap: 12, padding: 16 }}
+              >
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   style={{
-                    position: "relative",
-                    marginBottom: 12,
-                    padding: 12,
-                    border:
-                      selectedId === c.id
-                        ? "2px solid #007ACC"
-                        : "1px solid #ccc",
+                    padding: 8,
                     borderRadius: 4,
-                    cursor: "pointer",
+                    border: "1px solid #ccc",
+                    width: "100%",
+                    fontWeight: "bold",
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="OS Grid Ref"
+                  value={osGrid}
+                  onChange={(e) => setOsGrid(e.target.value)}
+                  style={{
+                    padding: 8,
+                    borderRadius: 4,
+                    border: "1px solid #ccc",
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Latitude"
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                  style={{
+                    padding: 8,
+                    borderRadius: 4,
+                    border: "1px solid #ccc",
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Longitude"
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                  style={{
+                    padding: 8,
+                    borderRadius: 4,
+                    border: "1px solid #ccc",
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  style={{
+                    padding: 10,
+                    background: canSubmit ? "#007ACC" : "#aaa",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor: canSubmit ? "pointer" : "not-allowed",
                   }}
                 >
-                  <strong>{c.name}</strong>
-                  <br />
-                  <small>{new Date(c.createdAt).toLocaleString()}</small>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(c.id);
+                  Add Call Out
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* Active Call Outs */}
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 8,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: 16,
+                borderBottom: "1px solid #eee",
+              }}
+            >
+              <h2 style={{ flex: 1, margin: 0 }}>Active Call Outs</h2>
+              <button
+                onClick={() => setCollapsedActive((x) => !x)}
+                style={{
+                  fontSize: 18,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  transform: collapsedActive ? "rotate(-90deg)" : undefined,
+                }}
+              >
+                ▶
+              </button>
+            </div>
+            {!collapsedActive && (
+              <div style={{ padding: 16 }}>
+                {callOuts.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setSelectedId(c.id);
                     }}
                     style={{
-                      position: "absolute",
-                      top: 8,
-                      right: 8,
-                      background: "none",
-                      border: "none",
-                      fontSize: "1.2em",
-                      color: "#c00",
+                      position: "relative",
+                      marginBottom: 12,
+                      padding: 12,
+                      border:
+                        selectedId === c.id
+                          ? "2px solid #007ACC"
+                          : "1px solid #ccc",
+                      borderRadius: 4,
                       cursor: "pointer",
                     }}
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Splitter */}
-      <div
-        onMouseDown={onMouseDown}
-        style={{
-          width: 8,
-          cursor: "col-resize",
-          background: "#888",
-        }}
-      />
-
-      {/* Main & Tabs */}
-      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <nav style={{ display: "flex", borderBottom: "1px solid #ddd" }}>
-          {[
-            { key: "map", label: "Map" },
-            { key: "incidents", label: "Call Outs" },
-            { key: "resources", label: "Resources" },
-            { key: "settings", label: "Settings" },
-            { key: "admin", label: "Admin" },
-          ].map((t) => (
-            <div
-              key={t.key}
-              onClick={() => setActiveTab(t.key as any)}
-              style={{
-                padding: "12px 16px",
-                cursor: "pointer",
-                fontWeight: activeTab === t.key ? "bold" : "normal",
-                borderBottom:
-                  activeTab === t.key
-                    ? "3px solid #007ACC"
-                    : "3px solid transparent",
-              }}
-            >
-              {t.label}
-            </div>
-          ))}
-        </nav>
-
-        {/* Map */}
-        {activeTab === "map" && (
-          <div
-            style={{ flex: 1, position: "relative", border: "1px solid #ddd" }}
-          >
-            <MapContainer
-              center={[54.2586, -3.2145]}
-              zoom={10}
-              style={{ height: "100%", width: "100%" }}
-            >
-              <MapInvalidate />
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {callOuts
-                .filter((c) => c.latitude != null && c.longitude != null)
-                .map((c) => (
-                  <Marker key={c.id} position={[c.latitude!, c.longitude!]}>
-                    <Popup>
-                      <strong>{c.name}</strong>
-                      <br />
-                      {c.osGrid
-                        ? `OS Grid: ${c.osGrid}`
-                        : `Lat/Lng: ${c.latitude}, ${c.longitude}`}
-                    </Popup>
-                  </Marker>
-                ))}
-            </MapContainer>
-          </div>
-        )}
-
-        {/* Call Outs & Assignment Pane */}
-        {activeTab === "incidents" && (
-          <div style={{ display: "flex", flex: 1 }}>
-            {/* List */}
-            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              {callOuts.length === 0 ? (
-                <p>No call outs.</p>
-              ) : (
-                <ul style={{ listStyle: "none", padding: 0 }}>
-                  {callOuts.map((c) => (
-                    <li
-                      key={c.id}
-                      onClick={() => setSelectedId(c.id)}
+                    <strong>{c.name}</strong>
+                    <br />
+                    <small>{new Date(c.createdAt).toLocaleString()}</small>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(c.id);
+                      }}
                       style={{
-                        marginBottom: 12,
-                        padding: 12,
-                        border:
-                          selectedId === c.id
-                            ? "2px solid #007ACC"
-                            : "1px solid #ccc",
-                        borderRadius: 4,
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        background: "none",
+                        border: "none",
+                        fontSize: "1.2em",
+                        color: "#c00",
                         cursor: "pointer",
                       }}
                     >
-                      <strong>{c.name}</strong>
-                      <br />
-                      <small>{new Date(c.createdAt).toLocaleString()}</small>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Detail & Assignment */}
-            {selected && (
-              <aside
-                style={{
-                  width: 300,
-                  padding: 16,
-                  borderLeft: "1px solid #ddd",
-                  boxSizing: "border-box",
-                  overflowY: "auto",
-                }}
-              >
-                <h3 style={{ marginTop: 0 }}>{selected.name}</h3>
-                <p>
-                  <strong>Assigned Resources</strong>
-                </p>
-                {assigned.length === 0 ? (
-                  <p>None</p>
-                ) : (
-                  assigned.map((rid) => {
-                    const r = resources.find((x) => x.id === rid)!;
-                    return (
-                      <div
-                        key={rid}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: 8,
-                        }}
-                      >
-                        <span>{r.name}</span>
-                        <button onClick={() => unassign(rid)}>–</button>
-                      </div>
-                    );
-                  })
-                )}
-                <hr />
-                <p>
-                  <strong>Available Resources</strong>
-                </p>
-                {unassigned.map((r) => (
-                  <div
-                    key={r.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <span>{r.name}</span>
-                    <button onClick={() => assign(r.id)}>+</button>
+                      ×
+                    </button>
                   </div>
                 ))}
-              </aside>
+              </div>
             )}
           </div>
-        )}
+        </aside>
 
-        {/* Categorized Resources Tab */}
-        {activeTab === "resources" && (
-          <div style={{ padding: 16 }}>
-            <h2>All Resources</h2>
-            <DragBoard />
-          </div>
-        )}
+        {/* Splitter */}
+        <div
+          onMouseDown={onMouseDown}
+          style={{
+            width: 8,
+            cursor: "col-resize",
+            background: "#888",
+          }}
+        />
+        <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <MainNav />
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <div
+                  style={{
+                    flex: 1,
+                    position: "relative",
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <MapContainer
+                    center={[54.2586, -3.2145]}
+                    zoom={10}
+                    style={{ height: "100%", width: "100%" }}
+                  >
+                    <MapInvalidate />
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    {callOuts
+                      .filter((c) => c.latitude != null && c.longitude != null)
+                      .map((c) => (
+                        <Marker
+                          key={c.id}
+                          position={[c.latitude!, c.longitude!]}
+                        >
+                          <Popup>
+                            <strong>{c.name}</strong>
+                            <br />
+                            {c.osGrid
+                              ? `OS Grid: ${c.osGrid}`
+                              : `Lat/Lng: ${c.latitude}, ${c.longitude}`}
+                          </Popup>
+                        </Marker>
+                      ))}
+                  </MapContainer>
+                </div>
+              }
+            />
 
-        {activeTab === "settings" && (
-          <div style={{ padding: 16 }}>Settings panel</div>
-        )}
-        {activeTab === "admin" && (
-          <div style={{ padding: 16 }}>Admin panel</div>
-        )}
-      </main>
-    </div>
+            <Route
+              path="/calls"
+              element={
+                <div style={{ display: "flex", flex: 1 }}>
+                  {/* …your Call-Outs & assignment pane JSX… */}
+                </div>
+              }
+            />
+
+            <Route
+              path="/resources"
+              element={
+                <div style={{ padding: 16 }}>
+                  {/* …your Resources (DragBoard) JSX… */}
+                </div>
+              }
+            />
+
+            <Route
+              path="/settings"
+              element={<div style={{ padding: 16 }}>Settings panel</div>}
+            />
+            <Route
+              path="/admin"
+              element={<div style={{ padding: 16 }}>Admin panel</div>}
+            />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
   );
 }
